@@ -1,0 +1,13 @@
+# Discovery caches — potentially every ATS customer; never publish (seeds/ IS committed).
+boards/
+
+# Run outputs
+*.csv
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+out/
+
+# OS noise
+.DS_Store

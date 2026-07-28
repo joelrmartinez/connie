@@ -1,0 +1,105 @@
+{
+  "meta": {
+    "total": 275
+  },
+  "jobs": [
+    {
+      "absolute_url": "https://boards.greenhouse.io/cloudflare/jobs/8077075?gh_jid=8077075",
+      "data_compliance": [
+        {
+          "type": "gdpr",
+          "requires_consent": false,
+          "requires_processing_consent": false,
+          "requires_retention_consent": false,
+          "retention_period": null,
+          "demographic_data_consent_applies": false
+        }
+      ],
+      "internal_job_id": 3499445,
+      "location": {
+        "name": "In-Office"
+      },
+      "metadata": [
+        {
+          "id": 825338,
+          "name": "Cost Center",
+          "value": "6300 - Accounting",
+          "value_type": "single_select"
+        },
+        {
+          "id": 8654220,
+          "name": "Job Posting Location",
+          "value": [
+            "Bengaluru, India"
+          ],
+          "value_type": "multi_select"
+        },
+        {
+          "id": 46546702,
+          "name": "Career Site Department",
+          "value": [
+            "Accounting & Finance"
+          ],
+          "value_type": "multi_select"
+        }
+      ],
+      "id": 8077075,
+      "updated_at": "2026-07-24T03:46:55-04:00",
+      "requisition_id": "917",
+      "title": "Accounts Payable Specialist",
+      "company_name": "Cloudflare",
+      "first_published": "2026-07-24T03:46:55-04:00",
+      "language": "en",
+      "application_deadline": null
+    },
+    {
+      "absolute_url": "https://boards.greenhouse.io/cloudflare/jobs/8044395?gh_jid=8044395",
+      "data_compliance": [
+        {
+          "type": "gdpr",
+          "requires_consent": false,
+          "requires_processing_consent": false,
+          "requires_retention_consent": false,
+          "retention_period": null,
+          "demographic_data_consent_applies": false
+        }
+      ],
+      "internal_job_id": 3486626,
+      "location": {
+        "name": "In-Office"
+      },
+      "metadata": [
+        {
+          "id": 825338,
+          "name": "Cost Center",
+          "value": "5991 - S&M Interns",
+          "value_type": "single_select"
+        },
+        {
+          "id": 8654220,
+          "name": "Job Posting Location",
+          "value": [
+            "London, UK"
+          ],
+          "value_type": "multi_select"
+        },
+        {
+          "id": 46546702,
+          "name": "Career Site Department",
+          "value": [
+            "Early Talent"
+          ],
+          "value_type": "multi_select"
+        }
+      ],
+      "id": 8044395,
+      "updated_at": "2026-07-08T16:16:19-04:00",
+      "requisition_id": null,
+      "title": "AI Transformation Intern – Global Customer Engineering, Service Sales (Fall 2026)",
+      "company_name": "Cloudflare",
+      "first_published": "2026-07-06T09:28:11-04:00",
+      "language": "en",
+      "application_deadline": null
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "apiVersion": "1",
+  "jobs": [
+    {
+      "id": "e1c6af86-dce1-495f-a710-ad369fd1308c",
+      "title": "Software Engineer",
+      "department": "Engineering",
+      "team": "Engineering",
+      "employmentType": "FullTime",
+      "location": "San Francisco",
+      "secondaryLocations": [],
+      "publishedAt": "2025-05-21T16:12:36.174+00:00",
+      "isListed": true,
+      "isRemote": true,
+      "workplaceType": "Hybrid",
+      "address": {
+        "postalAddress": {
+          "addressRegion": "California",
+          "addressCountry": "USA",
+          "addressLocality": "San Francisco"
+        }
+      },
+      "jobUrl": "https://jobs.ashbyhq.com/middesk/e1c6af86-dce1-495f-a710-ad369fd1308c",
+      "applyUrl": "https://jobs.ashbyhq.com/middesk/e1c6af86-dce1-495f-a710-ad369fd1308c/application",
+      "descriptionHtml": "<p>Trimmed for fixture.</p>",
+      "descriptionPlain": "Trimmed for fixture. Contains kubernetes for grep tests."
+    },
+    {
+      "id": "ce344f6c-f245-4751-ad36-c60abfccfab7",
+      "title": "Account Executive, Mid-Market",
+      "department": "Revenue",
+      "team": "Revenue",
+      "employmentType": "FullTime",
+      "location": "New York",
+      "secondaryLocations": [],
+      "publishedAt": "2026-05-21T17:06:47.315+00:00",
+      "isListed": true,
+      "isRemote": null,
+      "workplaceType": null,
+      "address": {
+        "postalAddress": {
+          "addressRegion": "New York",
+          "addressCountry": "USA",
+          "addressLocality": "New York"
+        }
+      },
+      "jobUrl": "https://jobs.ashbyhq.com/middesk/ce344f6c-f245-4751-ad36-c60abfccfab7",
+      "applyUrl": "https://jobs.ashbyhq.com/middesk/ce344f6c-f245-4751-ad36-c60abfccfab7/application",
+      "descriptionHtml": "<p>Trimmed for fixture.</p>",
+      "descriptionPlain": "Trimmed for fixture. Contains kubernetes for grep tests."
+    },
+    {
+      "id": "00000000-0000-0000-0000-00000000dead",
+      "title": "Internal Only Role (synthetic)",
+      "department": "Engineering",
+      "team": "Engineering",
+      "employmentType": "FullTime",
+      "location": "San Francisco",
+      "secondaryLocations": [],
+      "publishedAt": "2025-05-21T16:12:36.174+00:00",
+      "isListed": false,
+      "isRemote": true,
+      "workplaceType": "Hybrid",
+      "address": {
+        "postalAddress": {
+          "addressRegion": "California",
+          "addressCountry": "USA",
+          "addressLocality": "San Francisco"
+        }
+      },
+      "jobUrl": "https://jobs.ashbyhq.com/middesk/e1c6af86-dce1-495f-a710-ad369fd1308c",
+      "applyUrl": "https://jobs.ashbyhq.com/middesk/e1c6af86-dce1-495f-a710-ad369fd1308c/application",
+      "descriptionHtml": "<p>Trimmed for fixture.</p>",
+      "descriptionPlain": "Trimmed for fixture. Contains kubernetes for grep tests."
+    }
+  ]
+}

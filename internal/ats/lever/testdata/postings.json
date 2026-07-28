@@ -1,0 +1,95 @@
+[
+  {
+    "additionalPlain": "Trimmed plain. golang appears here for grep tests.",
+    "additional": "<p>Trimmed.</p>",
+    "categories": {
+      "commitment": "Full-time",
+      "location": "London, United Kingdom",
+      "team": "Administrative",
+      "allLocations": [
+        "London, United Kingdom"
+      ]
+    },
+    "createdAt": 1711403416463,
+    "descriptionPlain": "Trimmed plain. golang appears here for grep tests.",
+    "description": "<p>Trimmed.</p>",
+    "id": "ac978161-6f46-4f6b-ad9e-a258e642751c",
+    "lists": [
+      {
+        "text": "Administrative Business Partner (Foundry)",
+        "content": "<li>ship Go services</li>"
+      }
+    ],
+    "text": "Administrative Business Partner",
+    "country": "GB",
+    "workplaceType": "hybrid",
+    "opening": "<p>Trimmed.</p>",
+    "openingPlain": "Trimmed plain. golang appears here for grep tests.",
+    "descriptionBody": "<p>Trimmed.</p>",
+    "descriptionBodyPlain": "Trimmed plain. golang appears here for grep tests.",
+    "hostedUrl": "https://jobs.lever.co/palantir/ac978161-6f46-4f6b-ad9e-a258e642751c",
+    "applyUrl": "https://jobs.lever.co/palantir/ac978161-6f46-4f6b-ad9e-a258e642751c/apply"
+  },
+  {
+    "additionalPlain": "Trimmed plain. golang appears here for grep tests.",
+    "additional": "<p>Trimmed.</p>",
+    "categories": {
+      "commitment": "Scholarship",
+      "location": "North America",
+      "team": "Business Development",
+      "allLocations": [
+        "North America"
+      ]
+    },
+    "createdAt": 1750119374985,
+    "descriptionPlain": "Trimmed plain. golang appears here for grep tests.",
+    "description": "<p>Trimmed.</p>",
+    "id": "0ccbe620-a3ef-41d1-a5c4-68e56b3c91d0",
+    "lists": [
+      {
+        "text": "Requirements",
+        "content": "<li>ship Go services</li>"
+      }
+    ],
+    "text": "American Tech Fellowship",
+    "country": "US",
+    "workplaceType": "remote",
+    "opening": "<p>Trimmed.</p>",
+    "openingPlain": "Trimmed plain. golang appears here for grep tests.",
+    "descriptionBody": "<p>Trimmed.</p>",
+    "descriptionBodyPlain": "Trimmed plain. golang appears here for grep tests.",
+    "hostedUrl": "https://jobs.lever.co/palantir/0ccbe620-a3ef-41d1-a5c4-68e56b3c91d0",
+    "applyUrl": "https://jobs.lever.co/palantir/0ccbe620-a3ef-41d1-a5c4-68e56b3c91d0/apply"
+  },
+  {
+    "additionalPlain": "Trimmed plain. golang appears here for grep tests.",
+    "additional": "<p>Trimmed.</p>",
+    "categories": {
+      "commitment": "Full-time",
+      "location": "Remote — United States",
+      "team": "Administrative",
+      "allLocations": [
+        "London, United Kingdom"
+      ]
+    },
+    "createdAt": 1711403416463,
+    "descriptionPlain": "Trimmed plain. golang appears here for grep tests.",
+    "description": "<p>Trimmed.</p>",
+    "id": "deadbeef-0000-0000-0000-000000000000",
+    "lists": [
+      {
+        "text": "Administrative Business Partner (Foundry)",
+        "content": "<li>ship Go services</li>"
+      }
+    ],
+    "text": "Staff Platform Engineer (synthetic remote)",
+    "country": "GB",
+    "workplaceType": "remote",
+    "opening": "<p>Trimmed.</p>",
+    "openingPlain": "Trimmed plain. golang appears here for grep tests.",
+    "descriptionBody": "<p>Trimmed.</p>",
+    "descriptionBodyPlain": "Trimmed plain. golang appears here for grep tests.",
+    "hostedUrl": "https://jobs.lever.co/palantir/ac978161-6f46-4f6b-ad9e-a258e642751c",
+    "applyUrl": "https://jobs.lever.co/palantir/ac978161-6f46-4f6b-ad9e-a258e642751c/apply"
+  }
+]

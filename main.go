@@ -5,12 +5,11 @@
 package main
 
 import (
-	"fmt"
 	"os"
+
+	"github.com/saiwrd/connie/internal/cli"
 )
 
 func main() {
-	// Wired to internal/cli in Phase 8; keep the binary compiling until then.
-	fmt.Fprintln(os.Stderr, "connie: not yet operational — see https://github.com/saiwrd/connie")
-	os.Exit(2)
+	os.Exit(cli.Run(os.Args[1:]))
 }

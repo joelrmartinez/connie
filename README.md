@@ -3,7 +3,7 @@
 **The Circus's memory for public job boards.**
 
 Connie scans the free, unauthenticated APIs of three applicant-tracking
-systems — **Ashby, Greenhouse, and Lever** — filters the postings you care
+systems — **Ashby, Greenhouse, Lever, and SmartRecruiters** — filters the postings you care
 about, and *remembers every posting she has ever seen* in a local SQLite
 Registry: `first_seen`, `last_seen`, and a careful `closed_at` lifecycle.
 Run her on a schedule and the diff is a signal feed: **who started hiring

@@ -1,0 +1,131 @@
+{
+ "offset": 0,
+ "limit": 100,
+ "totalFound": 2,
+ "content": [
+  {
+   "id": "744000136114322",
+   "name": "GTM Operations Manager - Remote",
+   "uuid": "cf213f97-e216-434c-9880-3f76137805c4",
+   "jobAdId": "07436faf-5cd5-45f7-a7fe-20cda109d39d",
+   "defaultJobAd": true,
+   "refNumber": "REF55J",
+   "company": {
+    "identifier": "OnTheStage",
+    "name": "On The Stage"
+   },
+   "releasedDate": "2026-07-07T00:07:42.449Z",
+   "location": {
+    "city": "New York",
+    "region": "New York",
+    "country": "us",
+    "address": "254 W 54th St 13th Floor",
+    "postalCode": "10019",
+    "remote": true,
+    "hybrid": false,
+    "fullLocation": "New York, New York, United States"
+   },
+   "industry": {
+    "id": "computer_software",
+    "label": "Computer Software"
+   },
+   "department": {},
+   "function": {
+    "id": "project_management",
+    "label": "Project Management"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "mid_senior_level",
+    "label": "Mid-Senior Level"
+   },
+   "customField": [
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "us",
+     "valueLabel": "United States"
+    },
+    {
+     "fieldId": "5dcb26ccf746bf0362b4640b",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "On The Stage"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/OnTheStage/postings/744000136114322",
+   "language": {
+    "code": "en",
+    "label": "English",
+    "labelNative": "English (US)"
+   }
+  },
+  {
+   "id": "744000136113989",
+   "name": "Founding GTM Engineer - Remote",
+   "uuid": "a02e0454-8750-4ea9-860a-aefd16db123d",
+   "jobAdId": "de5ce51f-2fcb-42a6-b873-8aac85542127",
+   "defaultJobAd": true,
+   "refNumber": "REF53M",
+   "company": {
+    "identifier": "OnTheStage",
+    "name": "On The Stage"
+   },
+   "releasedDate": "2026-07-06T23:51:35.929Z",
+   "location": {
+    "city": "New York",
+    "region": "NY",
+    "country": "us",
+    "address": "254 W. 54th St.",
+    "postalCode": "10019",
+    "remote": true,
+    "hybrid": false,
+    "latitude": "40.7127753",
+    "longitude": "-74.0059728",
+    "fullLocation": "New York, NY, United States"
+   },
+   "industry": {
+    "id": "computer_software",
+    "label": "Computer Software"
+   },
+   "department": {},
+   "function": {
+    "id": "engineering",
+    "label": "Engineering"
+   },
+   "typeOfEmployment": {
+    "id": "permanent",
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "id": "mid_senior_level",
+    "label": "Mid-Senior Level"
+   },
+   "customField": [
+    {
+     "fieldId": "COUNTRY",
+     "fieldLabel": "Country/Region",
+     "valueId": "us",
+     "valueLabel": "United States"
+    },
+    {
+     "fieldId": "5dcb26ccf746bf0362b4640b",
+     "fieldLabel": "Brands",
+     "valueId": "default",
+     "valueLabel": "On The Stage"
+    }
+   ],
+   "visibility": "PUBLIC",
+   "ref": "https://api.smartrecruiters.com/v1/companies/OnTheStage/postings/744000136113989",
+   "language": {
+    "code": "en",
+    "label": "English",
+    "labelNative": "English (US)"
+   }
+  }
+ ]
+}

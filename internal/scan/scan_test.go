@@ -191,6 +191,36 @@ func TestRunCoveredOnlyWhenUnfiltered(t *testing.T) {
 	}
 }
 
+func TestEmptyBoardIsNotCoveredSoNothingCloses(t *testing.T) {
+	t.Parallel()
+
+	// A board that returns no postings proves nothing. A 200 with an empty
+	// list is indistinguishable from a dead slug, a lapsed subscription, or
+	// a changed response shape. Covering it would let the Registry close
+	// every posting that board ever had, on no evidence, and exit 0.
+	fake := &fakeAdapter{
+		name: "ashby",
+		jobsFor: func(board string) []ats.Job {
+			if board == "board-01" {
+				return nil // well-formed response, zero postings
+			}
+			return []ats.Job{{ATS: "ashby", Board: board, ExternalID: board + "-1", Title: "Engineer"}}
+		},
+	}
+	rep, err := Run(context.Background(), tasksFor(fake, boards(3)), unfiltered(t), Config{Concurrency: 2})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	for _, c := range rep.Covered {
+		if c.Board == "board-01" {
+			t.Fatal("empty board reported as covered — the Registry would close its postings on no evidence")
+		}
+	}
+	if len(rep.Covered) != 2 {
+		t.Fatalf("Covered = %d boards, want 2 (the empty board excluded)", len(rep.Covered))
+	}
+}
+
 func TestRunAppliesFilter(t *testing.T) {
 	t.Parallel()
 	fake := &fakeAdapter{name: "ashby", jobsFor: func(board string) []ats.Job {

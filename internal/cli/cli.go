@@ -17,7 +17,6 @@ import (
 	"github.com/saiwrd/connie/internal/ats/ashby"
 	"github.com/saiwrd/connie/internal/ats/greenhouse"
 	"github.com/saiwrd/connie/internal/ats/lever"
-	"github.com/saiwrd/connie/internal/ats/smartrecruiters"
 	"github.com/saiwrd/connie/internal/discover"
 	"github.com/saiwrd/connie/internal/export"
 	"github.com/saiwrd/connie/internal/filter"
@@ -92,10 +91,9 @@ func newClient() *httpx.Client {
 // adaptersFor resolves --ats into adapter instances, seed/cache aware.
 func adaptersFor(names string, client ats.Getter) ([]ats.Adapter, error) {
 	all := map[string]ats.Adapter{
-		"ashby":           ashby.New(client),
-		"greenhouse":      greenhouse.New(client),
-		"lever":           lever.New(client),
-		"smartrecruiters": smartrecruiters.New(client),
+		"ashby":      ashby.New(client),
+		"greenhouse": greenhouse.New(client),
+		"lever":      lever.New(client),
 	}
 	var out []ats.Adapter
 	for _, n := range strings.Split(names, ",") {
@@ -105,7 +103,7 @@ func adaptersFor(names string, client ats.Getter) ([]ats.Adapter, error) {
 		}
 		a, ok := all[n]
 		if !ok {
-			return nil, fmt.Errorf("unknown ats %q (have: ashby, greenhouse, lever, smartrecruiters)", n)
+			return nil, fmt.Errorf("unknown ats %q (have: ashby, greenhouse, lever)", n)
 		}
 		out = append(out, a)
 	}
@@ -135,7 +133,7 @@ func runScan(args []string) int {
 	fs := flag.NewFlagSet("scan", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	var (
-		atsList     = fs.String("ats", "ashby,greenhouse,lever,smartrecruiters", "comma-separated ATSes to scan")
+		atsList     = fs.String("ats", "ashby,greenhouse,lever", "comma-separated ATSes to scan")
 		title       = fs.String("title", "", "title to match (fuzzy)")
 		exact       = fs.Bool("exact", false, "match --title exactly")
 		grep        = fs.String("grep", "", "case-insensitive regex over descriptions")

@@ -42,7 +42,6 @@ func atsServer(t *testing.T) *httptest.Server {
 	ashbyBody := fixture(t, "ashby/testdata/board.json")
 	ghBody := fixture(t, "greenhouse/testdata/jobs.json")
 	leverBody := fixture(t, "lever/testdata/postings.json")
-	srBody := fixture(t, "smartrecruiters/testdata/postings.json")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/posting-api/job-board/", func(w http.ResponseWriter, r *http.Request) {
@@ -54,9 +53,6 @@ func atsServer(t *testing.T) *httptest.Server {
 	mux.HandleFunc("/v0/postings/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write(leverBody)
 	})
-	mux.HandleFunc("/v1/companies/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write(srBody)
-	})
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv
@@ -67,7 +63,7 @@ func atsServer(t *testing.T) *httptest.Server {
 func setupDirs(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	for _, ats := range []string{"ashby", "greenhouse", "lever", "smartrecruiters"} {
+	for _, ats := range []string{"ashby", "greenhouse", "lever"} {
 		if err := discover.Save(filepath.Join(dir, "seeds", ats+".json"), []string{"testboard"}); err != nil {
 			t.Fatalf("seed %s: %v", ats, err)
 		}
@@ -104,7 +100,7 @@ func TestScanEndToEnd(t *testing.T) {
 		t.Fatalf("scan exit = %d, stderr:\n%s", code, errOut)
 	}
 
-	// CSV written: 2 ashby (unlisted dropped) + 2 greenhouse + 3 lever + 2 smartrecruiters = 9 per board file.
+	// CSV written: 2 ashby (unlisted dropped) + 2 greenhouse + 3 lever = 7 per board file.
 	body, err := os.ReadFile(filepath.Join(dir, "run.csv"))
 	if err != nil {
 		t.Fatalf("read csv: %v", err)
@@ -114,14 +110,14 @@ func TestScanEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse csv: %v", err)
 	}
-	if len(records) != 1+9 {
-		t.Fatalf("csv rows = %d, want header+9", len(records))
+	if len(records) != 1+7 {
+		t.Fatalf("csv rows = %d, want header+7", len(records))
 	}
 	if _, err := os.Stat(filepath.Join(dir, "run.json")); err != nil {
 		t.Fatalf("json missing: %v", err)
 	}
 
-	// Registry populated with the same 9.
+	// Registry populated with the same 7.
 	s, err := store.Open(filepath.Join(dir, "test.db"))
 	if err != nil {
 		t.Fatalf("open db: %v", err)
@@ -131,8 +127,8 @@ func TestScanEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("query: %v", err)
 	}
-	if len(rows) != 9 {
-		t.Fatalf("db rows = %d, want 9", len(rows))
+	if len(rows) != 7 {
+		t.Fatalf("db rows = %d, want 7", len(rows))
 	}
 }
 
@@ -173,8 +169,8 @@ func TestQueryReadsBackTheRegistry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse query csv: %v", err)
 	}
-	if len(records) != 1+9 {
-		t.Fatalf("query rows = %d, want header+9", len(records))
+	if len(records) != 1+7 {
+		t.Fatalf("query rows = %d, want header+7", len(records))
 	}
 }
 

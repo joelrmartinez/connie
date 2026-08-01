@@ -40,8 +40,10 @@ type Report struct {
 	Rows []store.Row // filtered postings, ready for the Registry
 	Dead []Task      // boards that 404ed — prune them from the cache
 	Errs int         // boards that failed for any other reason
-	// Covered lists boards scanned exhaustively; nil on filtered or
-	// canceled runs, in which case the Registry closes nothing.
+	// Covered lists boards scanned exhaustively and proven live by at least
+	// one posting; nil on filtered or canceled runs, in which case the
+	// Registry closes nothing. A board that returned zero postings is never
+	// covered: empty is not proof.
 	Covered []store.BoardRef
 }
 
@@ -112,7 +114,17 @@ func Run(ctx context.Context, tasks []Task, f *filter.Filter, cfg Config) (Repor
 			rep.Errs++
 		default:
 			rep.Rows = append(rep.Rows, r.rows...)
-			covered = append(covered, store.BoardRef{ATS: r.task.Adapter.Name(), Board: r.task.Board})
+			// A board that returned nothing proves nothing. A 200 with an
+			// empty list is indistinguishable from a dead slug, a lapsed
+			// subscription, or a changed response shape, so covering it
+			// would let the Registry close the board's whole history on no
+			// evidence. Only a board that actually produced postings is
+			// proof enough to close the ones it no longer lists. The cost
+			// is that a board which genuinely empties out keeps its last
+			// postings open; that is the cheaper mistake by far.
+			if len(r.rows) > 0 {
+				covered = append(covered, store.BoardRef{ATS: r.task.Adapter.Name(), Board: r.task.Board})
+			}
 		}
 		if cfg.Progress != nil {
 			cfg.Progress(completed, len(tasks))

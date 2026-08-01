@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/saiwrd/connie/internal/ats"
+	"github.com/saiwrd/connie/ats"
 	"github.com/saiwrd/connie/internal/filter"
 )
 

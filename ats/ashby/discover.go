@@ -1,4 +1,4 @@
-package lever
+package ashby
 
 import (
 	"context"
@@ -7,17 +7,18 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/saiwrd/connie/internal/ats"
+	"github.com/saiwrd/connie/ats"
 	"github.com/saiwrd/connie/internal/httpx"
 )
 
 // Hosts implements ats.Discoverer.
-func (a *Adapter) Hosts() []string { return []string{"jobs.lever.co"} }
+func (a *Adapter) Hosts() []string { return []string{"jobs.ashbyhq.com"} }
 
-// SlugFromURL implements ats.Discoverer.
+// SlugFromURL implements ats.Discoverer: the board slug is the first path
+// segment, percent-decoded (Ashby slugs may contain spaces).
 func (a *Adapter) SlugFromURL(raw string) (string, bool) {
 	u, err := url.Parse(raw)
-	if err != nil || !strings.EqualFold(u.Hostname(), "jobs.lever.co") {
+	if err != nil || !strings.EqualFold(u.Hostname(), "jobs.ashbyhq.com") {
 		return "", false
 	}
 	seg := strings.SplitN(strings.TrimPrefix(u.EscapedPath(), "/"), "/", 2)[0]
@@ -30,20 +31,19 @@ func (a *Adapter) SlugFromURL(raw string) (string, bool) {
 
 // Plausible implements ats.Discoverer.
 func (a *Adapter) Plausible(slug string) bool {
-	return ats.PlausibleSlug(slug, false)
+	return ats.PlausibleSlug(slug, true) // Ashby allows spaces
 }
 
-// Probe implements ats.Discoverer. Lever's cheapest liveness check is a
-// limit-1 GET — HEAD support is undocumented, and a dead slug 404s with a
-// JSON error body (verified live 2026-07-27).
+// Probe implements ats.Discoverer with a zero-body HEAD against the posting
+// API. 404 means "no such board" — a fact, not an error.
 func (a *Adapter) Probe(ctx context.Context, board string) (bool, error) {
-	_, err := a.client.Get(ctx, endpoint+url.PathEscape(board)+"?mode=json&limit=1")
+	err := a.client.Head(ctx, endpoint+url.PathEscape(board))
 	switch {
 	case err == nil:
 		return true, nil
 	case errors.Is(err, httpx.ErrNotFound):
 		return false, nil
 	default:
-		return false, fmt.Errorf("probe lever board %q: %w", board, err)
+		return false, fmt.Errorf("probe ashby board %q: %w", board, err)
 	}
 }

@@ -28,7 +28,7 @@ func (rt rewriteTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 
 func fixture(t *testing.T, rel string) []byte {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join("..", "ats", rel))
+	b, err := os.ReadFile(filepath.Join("..", "..", "ats", rel))
 	if err != nil {
 		t.Fatalf("read fixture %s: %v", rel, err)
 	}

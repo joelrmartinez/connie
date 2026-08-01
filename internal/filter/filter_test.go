@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/saiwrd/connie/internal/ats"
+	"github.com/saiwrd/connie/ats"
 )
 
 // Ported table-for-table from the Python reference (test_ashby_jobs.py) —

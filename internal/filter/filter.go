@@ -17,7 +17,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/saiwrd/connie/internal/ats"
+	"github.com/saiwrd/connie/ats"
 )
 
 var (

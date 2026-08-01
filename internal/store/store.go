@@ -17,7 +17,7 @@ import (
 
 	_ "modernc.org/sqlite" // pure-Go driver: CGO_ENABLED=0, static binary
 
-	"github.com/saiwrd/connie/internal/ats"
+	"github.com/saiwrd/connie/ats"
 )
 
 const schema = `

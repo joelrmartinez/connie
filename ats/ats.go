@@ -67,3 +67,19 @@ type Discoverer interface {
 	Plausible(slug string) bool                            // cheap shape filter before probing
 	Probe(ctx context.Context, board string) (bool, error) // cheapest liveness check
 }
+
+// CDXTarget is one archive query: a URL and the CDX match mode to use.
+type CDXTarget struct {
+	URL       string // e.g. "boards.greenhouse.io/embed/job_board"
+	MatchType string // "domain", "host", "prefix", or "exact"
+}
+
+// CDXTargeter is an optional refinement of Discoverer for ATSes whose
+// archive footprint is too large to query a whole domain at once, or whose
+// slugs hide on one specific path. Greenhouse is both: a domain-wide query
+// times out, while the embed path alone yields thousands of slugs in
+// seconds. Adapters that do not implement it fall back to Hosts() with a
+// domain match, which is the right default for a small footprint.
+type CDXTargeter interface {
+	CDXTargets() []CDXTarget
+}

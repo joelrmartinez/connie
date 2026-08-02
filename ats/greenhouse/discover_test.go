@@ -20,6 +20,18 @@ func TestSlugFromURL(t *testing.T) {
 		{"https://job-boards.greenhouse.io/stripe", "stripe", true}, // migrated host
 		{"https://boards.greenhouse.io/", "", false},
 		{"https://example.com/cloudflare", "", false},
+
+		// The embed form. Companies iframe their board rather than link it,
+		// so the slug lives in a query parameter and the path is a constant.
+		// Reading only the first path segment yields "embed" for every one of
+		// these, which is both wrong and, because it is a single plausible
+		// token, silently wrong.
+		{"https://boards.greenhouse.io/embed/job_board?for=airbnb", "airbnb", true},
+		{"https://boards.greenhouse.io/embed/job_board?for=airbnb&b=https%3A%2F%2Fairbnb.com", "airbnb", true},
+		{"https://boards.greenhouse.io/embed/job_app?for=doordash&token=123", "doordash", true},
+		{"https://job-boards.greenhouse.io/embed/job_board?for=ramp", "ramp", true},
+		{"https://boards.greenhouse.io/embed/job_board", "", false}, // no for=
+		{"https://boards.greenhouse.io/embed/job_board?for=", "", false},
 	}
 	for _, tt := range tests {
 		got, ok := a.SlugFromURL(tt.url)

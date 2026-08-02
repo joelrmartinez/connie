@@ -2,8 +2,8 @@
 
 **The Circus's memory for public job boards.**
 
-Connie scans the free, unauthenticated APIs of three applicant-tracking
-systems — **Ashby, Greenhouse, and Lever** — filters the postings you care
+Connie scans the free, unauthenticated APIs of four applicant-tracking
+systems — **Ashby, Greenhouse, Lever, and Workable** — filters the postings you care
 about, and *remembers every posting she has ever seen* in a local SQLite
 Registry: `first_seen`, `last_seen`, and a careful `closed_at` lifecycle.
 Run her on a schedule and the diff is a signal feed: **who started hiring
@@ -37,7 +37,8 @@ cross-compiles from anywhere (`make dist` targets linux/mac, amd64/arm64).
 
 ```
 connie scan     --title Q | --grep RE | --all    scan boards, filter, export, remember
-connie discover [--ats ashby,greenhouse,lever]   harvest board slugs from the Wayback Machine
+connie discover [--ats ashby,greenhouse,lever,workable]
+                                                harvest board slugs from the Wayback Machine
 connie query    [--open] [--since 24h]           read the Registry offline
 connie version
 ```
@@ -124,7 +125,7 @@ real API response per ATS, never full crawls. One live smoke test exists
 behind a build tag:
 
 ```
-CONNIE_CONTACT="you@example.com" go test -tags live ./internal/ats/smoke -v
+CONNIE_CONTACT="you@example.com" go test -tags live ./ats/smoke -v
 ```
 
 ## Etiquette

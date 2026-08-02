@@ -17,6 +17,7 @@ import (
 	"github.com/saiwrd/connie/ats/ashby"
 	"github.com/saiwrd/connie/ats/greenhouse"
 	"github.com/saiwrd/connie/ats/lever"
+	"github.com/saiwrd/connie/ats/workable"
 	"github.com/saiwrd/connie/internal/discover"
 	"github.com/saiwrd/connie/internal/export"
 	"github.com/saiwrd/connie/internal/filter"
@@ -38,7 +39,7 @@ const usageText = `connie — the Circus's memory for public job boards
 
 Usage:
   connie scan     --title Q | --grep RE | --all   [flags]   scan boards, filter, export, remember
-  connie discover [--ats ashby,greenhouse,lever]            harvest board slugs from the Wayback CDX
+  connie discover [--ats ...]                     [flags]   harvest board slugs from the Wayback CDX
   connie query    [--open] [--since 24h] [flags]            read the Registry offline
   connie version
 
@@ -80,8 +81,8 @@ func userAgent() string {
 	return ua
 }
 
-func newClient() *httpx.Client {
-	opts := []httpx.Option{httpx.WithUserAgent(userAgent())}
+func newClient(extra ...httpx.Option) *httpx.Client {
+	opts := append([]httpx.Option{httpx.WithUserAgent(userAgent())}, extra...)
 	if testTransport != nil {
 		opts = append(opts, httpx.WithBaseTransport(testTransport))
 	}
@@ -94,6 +95,7 @@ func adaptersFor(names string, client ats.Getter) ([]ats.Adapter, error) {
 		"ashby":      ashby.New(client),
 		"greenhouse": greenhouse.New(client),
 		"lever":      lever.New(client),
+		"workable":   workable.New(client),
 	}
 	var out []ats.Adapter
 	for _, n := range strings.Split(names, ",") {
@@ -103,7 +105,7 @@ func adaptersFor(names string, client ats.Getter) ([]ats.Adapter, error) {
 		}
 		a, ok := all[n]
 		if !ok {
-			return nil, fmt.Errorf("unknown ats %q (have: ashby, greenhouse, lever)", n)
+			return nil, fmt.Errorf("unknown ats %q (have: ashby, greenhouse, lever, workable)", n)
 		}
 		out = append(out, a)
 	}
@@ -133,7 +135,7 @@ func runScan(args []string) int {
 	fs := flag.NewFlagSet("scan", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	var (
-		atsList     = fs.String("ats", "ashby,greenhouse,lever", "comma-separated ATSes to scan")
+		atsList     = fs.String("ats", "ashby,greenhouse,lever,workable", "comma-separated ATSes to scan")
 		title       = fs.String("title", "", "title to match (fuzzy)")
 		exact       = fs.Bool("exact", false, "match --title exactly")
 		grep        = fs.String("grep", "", "case-insensitive regex over descriptions")
@@ -295,14 +297,19 @@ func runDiscover(args []string) int {
 	fs := flag.NewFlagSet("discover", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	var (
-		atsList     = fs.String("ats", "ashby,greenhouse,lever", "comma-separated ATSes to discover")
+		atsList     = fs.String("ats", "ashby,greenhouse,lever,workable", "comma-separated ATSes to discover")
 		concurrency = fs.Int("concurrency", 8, "max in-flight probes")
+		cdxTimeout  = fs.Duration("cdx-timeout", 5*time.Minute, "timeout for one archive query")
 	)
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
 
-	client := newClient()
+	// A CDX response can be tens of megabytes and take minutes to stream. The
+	// 30s default that suits a board fetch silently turned discovery into a
+	// timeout, which read as "the archive has nothing" rather than "we hung
+	// up first".
+	client := newClient(httpx.WithTimeout(*cdxTimeout))
 	adapters, err := adaptersFor(*atsList, client)
 	if err != nil {
 		return fail(err)

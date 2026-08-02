@@ -50,18 +50,18 @@ func Harvest(ctx context.Context, d ats.Discoverer, client ats.Getter, cfg Confi
 	// Phase 1: harvest candidates from the archive.
 	var candidates []string
 	seen := map[string]bool{}
-	for _, host := range d.Hosts() {
-		cdxURL := fmt.Sprintf("%s?url=%s&matchType=domain&fl=original&collapse=urlkey&output=json",
-			cfg.CDXBase, url.QueryEscape(host))
+	for _, target := range targetsFor(d) {
+		cdxURL := fmt.Sprintf("%s?url=%s&matchType=%s&fl=original&collapse=urlkey&output=json",
+			cfg.CDXBase, url.QueryEscape(target.URL), url.QueryEscape(target.MatchType))
 		body, err := client.Get(ctx, cdxURL)
 		if err != nil {
-			return nil, fmt.Errorf("query CDX for %s: %w", host, err)
+			return nil, fmt.Errorf("query CDX for %s: %w", target.URL, err)
 		}
 
 		// output=json is an array of one-column rows, header first.
 		var rows [][]string
 		if err := json.Unmarshal(body, &rows); err != nil {
-			return nil, fmt.Errorf("parse CDX response for %s: %w", host, err)
+			return nil, fmt.Errorf("parse CDX response for %s: %w", target.URL, err)
 		}
 		for i, row := range rows {
 			if i == 0 || len(row) == 0 { // header row
@@ -189,4 +189,20 @@ func writeFile(path string, body []byte) error {
 		return fmt.Errorf("write %q: %w", path, err)
 	}
 	return nil
+}
+
+// targetsFor asks the adapter for explicit archive queries and falls back to
+// a domain-wide query per host. The fallback is right for a small footprint;
+// the override exists because Greenhouse's is not small.
+func targetsFor(d ats.Discoverer) []ats.CDXTarget {
+	if t, ok := d.(ats.CDXTargeter); ok {
+		if targets := t.CDXTargets(); len(targets) > 0 {
+			return targets
+		}
+	}
+	out := make([]ats.CDXTarget, 0, len(d.Hosts()))
+	for _, h := range d.Hosts() {
+		out = append(out, ats.CDXTarget{URL: h, MatchType: "domain"})
+	}
+	return out
 }

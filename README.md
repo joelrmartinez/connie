@@ -24,6 +24,62 @@ $ connie query --open --since 24h --format table
 ashby   render   Revenue Operations Manager   https://jobs.ashbyhq.com/render/...
 ```
 
+## Why GTM teams care
+
+A job posting is the cheapest, most honest buying signal there is: a company that opens a *Revenue Operations Manager* role is about to feel that pain, budget is already approved, and the date it opened is a natural reason to reach out ("saw you're building out RevOps").
+
+Most tools show you postings that exist **today**. Connie tells you what **changed**: new postings with the day they first appeared, postings that vanished (role filled or cancelled), and postings that came back. That diff is what sales, recruiting-adjacent vendors, and agencies actually want, and it costs nothing but the free public ATS APIs.
+
+Typical uses:
+
+- **Outbound triggers:** "companies that opened a RevOps / Data Engineer / SDR role in the last 24h" pushed to a CRM or Slack.
+- **Market maps:** which boards hire for a function, and how fast roles close.
+- **Vendor timing:** hiring for a tool's admin role usually means the tool was just bought.
+
+## Sample signal-feed workflow
+
+```bash
+export CONNIE_CONTACT="you@example.com"
+
+# 1. Full unfiltered scan of the seed boards. Only --all runs may close postings.
+connie scan --all --ats ashby,greenhouse,lever,workable
+
+# 2. What opened in the last 24h that matches my ICP roles?
+connie query --open --since 24h --title "revenue operations" --format json > new-signals.json
+
+# 3. Turn it into a feed: one line per signal.
+jq -r '.[] | "\(.board)\t\(.title)\t\(.location)\t\(.url)"' new-signals.json
+```
+
+Example output (illustrative; company names are placeholders):
+
+```
+acme-co     Revenue Operations Manager    Remote (US)   https://jobs.ashbyhq.com/acme-co/...
+globex      Sr. RevOps Analyst            New York      https://boards.greenhouse.io/globex/...
+```
+
+From there pipe the JSON into your CRM importer, a Slack webhook, or a spreadsheet. The JSON schema is `ats, board, external_id, title, location, department, team, employment_type, remote, url, published_at, matched`.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph Sources
+    W[Wayback CDX index] -->|connie discover| B[(boards/*.json<br/>union cache)]
+    S[seeds/*.json<br/>curated] --> P
+    B --> P[Board list]
+  end
+  P --> Q[Worker pool<br/>channel + single aggregator]
+  Q --> A1[Ashby]
+  Q --> A2[Greenhouse]
+  Q --> A3[Lever]
+  Q --> A4[Workable]
+  A1 & A2 & A3 & A4 --> F[Filter<br/>--title / --grep / --remote]
+  F --> R[(SQLite Registry<br/>first_seen · last_seen · closed_at)]
+  F --> X[CSV / JSON export]
+  R --> Y[connie query<br/>--open --since 24h]
+```
+
 ## Install
 
 ```
@@ -128,11 +184,69 @@ behind a build tag:
 CONNIE_CONTACT="you@example.com" go test -tags live ./ats/smoke -v
 ```
 
-## Etiquette
+## Etiquette (short version)
 
 This scrapes public, unauthenticated APIs that ATS vendors provide so
 postings can be shared. Be worthy of that: set `CONNIE_CONTACT`, keep
 `--concurrency` at the default 8, and don't run discovery in a loop.
+
+## Run it on a schedule (GitHub Actions)
+
+The Registry is a single SQLite file, so a scheduled job only needs to persist that file between runs. This example caches it and posts new signals to a Slack incoming webhook. Save as `.github/workflows/signal-feed.yml` in your own repo:
+
+```yaml
+name: signal-feed
+on:
+  schedule:
+    - cron: "0 14 * * 1-5"   # weekdays, 07:00 Pacific
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    env:
+      CONNIE_CONTACT: ${{ secrets.CONNIE_CONTACT }}   # goes in the User-Agent
+    steps:
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - run: go install github.com/saiwrd/connie@latest
+
+      - name: Restore Registry
+        uses: actions/cache@v4
+        with:
+          path: connie.db
+          key: connie-registry-${{ github.run_id }}
+          restore-keys: connie-registry-
+
+      - name: Scan
+        run: connie scan --all --out feed
+
+      - name: New in the last 24h
+        run: connie query --open --since 24h --format json > new.json
+
+      - name: Post to Slack
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        run: |
+          n=$(jq length new.json)
+          if [ "$n" -gt 0 ]; then
+            text=$(jq -r '.[] | "• \(.title) @ \(.board) <\(.url)>"' new.json)
+            jq -n --arg t "*$n new postings*"$'\n'"$text" '{text: $t}' \
+              | curl -fsS -X POST -H 'content-type: application/json' --data @- "$SLACK_WEBHOOK"
+          fi
+```
+
+Note: `connie scan` and `connie query` read/write `connie.db` in the working directory by default (`--db` to change it).
+
+## Rate limits and ethics
+
+- Connie only calls the **public, unauthenticated job-board APIs** that ATS vendors expose so postings can be syndicated. No logins, no scraping behind auth, no candidate data.
+- Set `CONNIE_CONTACT` so board owners can reach you; it is placed in the User-Agent.
+- Default concurrency is 8; 429 and 5xx responses retry with exponential backoff, 404 never retries. Please don't raise concurrency to "go faster".
+- Don't run `connie discover` in a loop; the Wayback Machine and the ATS vendors are shared infrastructure.
+- Postings are business information about companies, not people. If you enrich with contact data downstream, follow the laws that apply to you (CAN-SPAM, GDPR/ePrivacy, CASL, TCPA) and honor opt-outs.
+- The committed `seeds/` are small and hand-verified on purpose; the full crawl output (`boards/`) is gitignored so this repo never becomes a published customer list.
 
 ## Lineage
 
@@ -142,4 +256,6 @@ closed-at lifecycle — are ported from
 single-file Python tool whose README documents six behaviors that look like
 bugs and are load-bearing. They survived the rewrite; so did the tests.
 
-MIT © Joel Martinez · [pushtomain.xyz](https://pushtomain.xyz)
+## License
+
+[MIT](LICENSE) © Joel Martinez · built at [pushtomain.xyz](https://pushtomain.xyz)

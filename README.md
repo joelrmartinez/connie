@@ -27,7 +27,7 @@ ashby   render   Revenue Operations Manager   https://jobs.ashbyhq.com/render/..
 ## Install
 
 ```
-go install github.com/saiwrd/connie@latest
+go install github.com/joelrmartinez/connie@latest
 ```
 
 Or build from a clone: `make build` — one static binary, `CGO_ENABLED=0`,

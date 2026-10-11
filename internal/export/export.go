@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/saiwrd/connie/internal/store"
+	"github.com/joelrmartinez/connie/internal/store"
 )
 
 var header = []string{"ats", "board", "external_id", "title", "location",

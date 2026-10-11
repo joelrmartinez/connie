@@ -26,7 +26,7 @@ const (
 	defaultRetries     = 2
 	defaultTimeout     = 30 * time.Second
 	defaultBackoffBase = time.Second
-	defaultUserAgent   = "connie/1.0 (+https://github.com/saiwrd/connie)"
+	defaultUserAgent   = "connie/1.0 (+https://github.com/joelrmartinez/connie)"
 )
 
 // Client is a retrying HTTP client for the ATS APIs.

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/saiwrd/connie/internal/discover"
-	"github.com/saiwrd/connie/internal/store"
+	"github.com/joelrmartinez/connie/internal/discover"
+	"github.com/joelrmartinez/connie/internal/store"
 )
 
 // rewriteTransport sends every request to the test server, whatever host

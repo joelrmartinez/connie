@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/saiwrd/connie/ats"
-	"github.com/saiwrd/connie/internal/httpx"
+	"github.com/joelrmartinez/connie/ats"
+	"github.com/joelrmartinez/connie/internal/httpx"
 )
 
 type stubGetter struct {

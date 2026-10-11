@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/saiwrd/connie/ats"
-	"github.com/saiwrd/connie/internal/filter"
+	"github.com/joelrmartinez/connie/ats"
+	"github.com/joelrmartinez/connie/internal/filter"
 )
 
 // fakeAdapter simulates an ATS with per-board behavior and instruments

@@ -13,9 +13,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/saiwrd/connie/ats"
-	"github.com/saiwrd/connie/internal/filter"
-	"github.com/saiwrd/connie/internal/store"
+	"github.com/joelrmartinez/connie/ats"
+	"github.com/joelrmartinez/connie/internal/filter"
+	"github.com/joelrmartinez/connie/internal/store"
 )
 
 // Task names one board on one ATS.

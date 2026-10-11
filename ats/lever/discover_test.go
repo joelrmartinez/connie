@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/saiwrd/connie/internal/httpx"
+	"github.com/joelrmartinez/connie/internal/httpx"
 )
 
 func TestSlugFromURL(t *testing.T) {

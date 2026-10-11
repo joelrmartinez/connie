@@ -7,7 +7,7 @@ package main
 import (
 	"os"
 
-	"github.com/saiwrd/connie/internal/cli"
+	"github.com/joelrmartinez/connie/internal/cli"
 )
 
 func main() {

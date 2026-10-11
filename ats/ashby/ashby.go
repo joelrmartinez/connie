@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/saiwrd/connie/ats"
-	"github.com/saiwrd/connie/internal/httpx"
+	"github.com/joelrmartinez/connie/ats"
+	"github.com/joelrmartinez/connie/internal/httpx"
 )
 
 const endpoint = "https://api.ashbyhq.com/posting-api/job-board/"

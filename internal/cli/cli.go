@@ -13,17 +13,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/saiwrd/connie/ats"
-	"github.com/saiwrd/connie/ats/ashby"
-	"github.com/saiwrd/connie/ats/greenhouse"
-	"github.com/saiwrd/connie/ats/lever"
-	"github.com/saiwrd/connie/ats/workable"
-	"github.com/saiwrd/connie/internal/discover"
-	"github.com/saiwrd/connie/internal/export"
-	"github.com/saiwrd/connie/internal/filter"
-	"github.com/saiwrd/connie/internal/httpx"
-	"github.com/saiwrd/connie/internal/scan"
-	"github.com/saiwrd/connie/internal/store"
+	"github.com/joelrmartinez/connie/ats"
+	"github.com/joelrmartinez/connie/ats/ashby"
+	"github.com/joelrmartinez/connie/ats/greenhouse"
+	"github.com/joelrmartinez/connie/ats/lever"
+	"github.com/joelrmartinez/connie/ats/workable"
+	"github.com/joelrmartinez/connie/internal/discover"
+	"github.com/joelrmartinez/connie/internal/export"
+	"github.com/joelrmartinez/connie/internal/filter"
+	"github.com/joelrmartinez/connie/internal/httpx"
+	"github.com/joelrmartinez/connie/internal/scan"
+	"github.com/joelrmartinez/connie/internal/store"
 )
 
 const version = "connie 0.1.0"
@@ -74,9 +74,9 @@ func fail(err error) int {
 }
 
 func userAgent() string {
-	ua := "connie/0.1 (+https://github.com/saiwrd/connie)"
+	ua := "connie/0.1 (+https://github.com/joelrmartinez/connie)"
 	if contact := os.Getenv("CONNIE_CONTACT"); contact != "" {
-		ua = fmt.Sprintf("connie/0.1 (+https://github.com/saiwrd/connie; contact: %s)", contact)
+		ua = fmt.Sprintf("connie/0.1 (+https://github.com/joelrmartinez/connie; contact: %s)", contact)
 	}
 	return ua
 }

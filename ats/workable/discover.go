@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/saiwrd/connie/ats"
-	"github.com/saiwrd/connie/internal/httpx"
+	"github.com/joelrmartinez/connie/ats"
+	"github.com/joelrmartinez/connie/internal/httpx"
 )
 
 // Hosts implements ats.Discoverer. Boards live under apply.workable.com/{slug}

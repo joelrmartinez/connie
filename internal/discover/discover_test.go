@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/saiwrd/connie/ats"
-	"github.com/saiwrd/connie/ats/ashby"
-	"github.com/saiwrd/connie/ats/greenhouse"
-	"github.com/saiwrd/connie/ats/lever"
+	"github.com/joelrmartinez/connie/ats"
+	"github.com/joelrmartinez/connie/ats/ashby"
+	"github.com/joelrmartinez/connie/ats/greenhouse"
+	"github.com/joelrmartinez/connie/ats/lever"
 )
 
 // The real adapters must satisfy the Discoverer contract.

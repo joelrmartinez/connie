@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/saiwrd/connie/ats"
-	"github.com/saiwrd/connie/internal/store"
+	"github.com/joelrmartinez/connie/ats"
+	"github.com/joelrmartinez/connie/internal/store"
 )
 
 func rows() []store.Row {

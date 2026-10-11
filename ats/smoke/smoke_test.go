@@ -14,11 +14,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/saiwrd/connie/ats"
-	"github.com/saiwrd/connie/ats/ashby"
-	"github.com/saiwrd/connie/ats/greenhouse"
-	"github.com/saiwrd/connie/ats/lever"
-	"github.com/saiwrd/connie/internal/httpx"
+	"github.com/joelrmartinez/connie/ats"
+	"github.com/joelrmartinez/connie/ats/ashby"
+	"github.com/joelrmartinez/connie/ats/greenhouse"
+	"github.com/joelrmartinez/connie/ats/lever"
+	"github.com/joelrmartinez/connie/internal/httpx"
 )
 
 func TestLiveFetchOneBoardPerATS(t *testing.T) {
@@ -27,7 +27,7 @@ func TestLiveFetchOneBoardPerATS(t *testing.T) {
 		t.Skip("set CONNIE_CONTACT to a real address before live runs")
 	}
 	client := httpx.New(httpx.WithUserAgent(
-		fmt.Sprintf("connie-smoke/0.1 (+https://github.com/saiwrd/connie; contact: %s)", contact)))
+		fmt.Sprintf("connie-smoke/0.1 (+https://github.com/joelrmartinez/connie; contact: %s)", contact)))
 
 	tests := []struct {
 		adapter ats.Adapter

@@ -19,7 +19,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/saiwrd/connie/ats"
+	"github.com/joelrmartinez/connie/ats"
 )
 
 // DefaultCDX is the Wayback Machine's CDX search endpoint.

@@ -1,4 +1,4 @@
-module github.com/saiwrd/connie
+module github.com/joelrmartinez/connie
 
 go 1.26
 

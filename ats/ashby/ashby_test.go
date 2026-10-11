@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/saiwrd/connie/ats"
-	"github.com/saiwrd/connie/internal/httpx"
+	"github.com/joelrmartinez/connie/ats"
+	"github.com/joelrmartinez/connie/internal/httpx"
 )
 
 // stubGetter feeds canned responses to the adapter and records the URL asked for.

@@ -135,5 +135,16 @@ func (c *Config) Validate() error {
 // ATSList returns the ATS names comma-joined, the shape --ats takes.
 func (c *Config) ATSList() string { return strings.Join(c.ATS, ",") }
 
-// Marshal renders c as YAML.
-func Marshal(c *Config) ([]byte, error) { return yaml.Marshal(c) }
+// Marshal renders c as YAML with two-space indents.
+func Marshal(c *Config) ([]byte, error) {
+	var b strings.Builder
+	enc := yaml.NewEncoder(&b)
+	enc.SetIndent(2)
+	if err := enc.Encode(c); err != nil {
+		return nil, fmt.Errorf("encode config: %w", err)
+	}
+	if err := enc.Close(); err != nil {
+		return nil, fmt.Errorf("encode config: %w", err)
+	}
+	return []byte(b.String()), nil
+}

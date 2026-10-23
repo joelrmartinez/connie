@@ -63,7 +63,9 @@ Instead of retyping flags, save a search in `connie.yaml` in the directory
 you run connie from. Start from a template:
 
 ```sh
-cp examples/gtm.yaml connie.yaml   # or examples/sales.yaml
+connie init                        # answer a few questions, writes connie.yaml
+connie init --defaults             # no questions (scripts, CI)
+cp examples/gtm.yaml connie.yaml   # or start from a template
 connie scan                        # no mode flag: uses connie.yaml
 ```
 

@@ -16,6 +16,7 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
+          check-latest: true # newest patch release, so govulncheck sees stdlib fixes
       - name: gofmt
         run: test -z "$(gofmt -l .)"
       - name: go mod tidy
@@ -34,5 +35,6 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version-file: go.mod
+          check-latest: true # newest patch release, so govulncheck sees stdlib fixes
       - name: build
         run: make build && ./connie version

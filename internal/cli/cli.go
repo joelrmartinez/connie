@@ -1,4 +1,4 @@
-// Package cli wires connie's subcommands: scan, discover, query, version.
+// Package cli wires connie's subcommands: init, scan, discover, query, version.
 package cli
 
 import (
@@ -40,6 +40,7 @@ var (
 const usageText = `connie — the Circus's memory for public job boards
 
 Usage:
+  connie init     [--defaults] [--out connie.yaml]          write a saved search (asks, or takes defaults)
   connie scan     --title Q | --grep RE | --all   [flags]   scan boards, filter, export, remember
                   (no mode flag: use the saved search in connie.yaml)
   connie discover [--ats ...]                     [flags]   harvest board slugs from the Wayback CDX
@@ -56,6 +57,8 @@ func Run(args []string) int {
 		return 2
 	}
 	switch args[0] {
+	case "init":
+		return runInit(args[1:])
 	case "scan":
 		return runScan(args[1:])
 	case "discover":

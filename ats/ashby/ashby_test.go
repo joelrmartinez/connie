@@ -149,3 +149,29 @@ func TestName(t *testing.T) {
 		t.Fatalf("Name() = %q, want ashby", got)
 	}
 }
+
+func TestFetchPay(t *testing.T) {
+	t.Parallel()
+	b, err := os.ReadFile("testdata/board_pay.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := &stubGetter{body: b}
+	jobs, err := New(g).Fetch(context.Background(), "acme", ats.FetchOptions{})
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	if !strings.Contains(g.gotURL, "includeCompensation=true") {
+		t.Fatalf("URL missing includeCompensation: %q", g.gotURL)
+	}
+	want := []ats.Pay{
+		{Min: 180000, Max: 220000, Currency: "USD", Period: ats.PerYear, Source: ats.PayFromField},
+		{}, // empty summary stays unknown
+		{Min: 60, Currency: "USD", Period: ats.PerHour, Source: ats.PayFromField},
+	}
+	for i, w := range want {
+		if jobs[i].Pay != w {
+			t.Errorf("job %d pay = %+v, want %+v", i, jobs[i].Pay, w)
+		}
+	}
+}

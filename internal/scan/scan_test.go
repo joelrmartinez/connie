@@ -294,3 +294,62 @@ func TestRunProgressCallback(t *testing.T) {
 		t.Fatalf("Progress called %d times, want once per board", calls)
 	}
 }
+
+// optsAdapter records the fetch options it was given and returns fixed jobs.
+type optsAdapter struct {
+	jobs []ats.Job
+	got  ats.FetchOptions
+	mu   sync.Mutex
+}
+
+func (a *optsAdapter) Name() string { return "opts" }
+
+func (a *optsAdapter) Fetch(_ context.Context, _ string, opt ats.FetchOptions) ([]ats.Job, error) {
+	a.mu.Lock()
+	a.got = opt
+	a.mu.Unlock()
+	return a.jobs, nil
+}
+
+func TestDescriptionPay(t *testing.T) {
+	field := ats.Pay{Min: 1, Max: 2, Currency: "USD", Period: ats.PerYear, Source: ats.PayFromField}
+	a := &optsAdapter{jobs: []ats.Job{
+		{ExternalID: "1", Title: "A", Description: "<p>Base salary: $150,000 - $180,000</p>"},
+		{ExternalID: "2", Title: "B", Description: "We raised $40M.", Pay: ats.Pay{}},
+		{ExternalID: "3", Title: "C", Description: "$90,000 - $100,000", Pay: field},
+	}}
+	f, _ := filter.New()
+	rep, err := Run(context.Background(), []Task{{Adapter: a, Board: "b"}}, f, Config{DescriptionPay: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !a.got.Descriptions {
+		t.Fatal("DescriptionPay must request descriptions")
+	}
+	byID := map[string]ats.Pay{}
+	for _, r := range rep.Rows {
+		byID[r.ExternalID] = r.Pay
+		if r.Description != "" {
+			t.Fatal("description text must not survive into rows")
+		}
+	}
+	if p := byID["1"]; p.Source != ats.PayFromDescription || p.Min != 150000 || p.Max != 180000 {
+		t.Errorf("parsed pay = %+v", p)
+	}
+	if byID["2"].Known() {
+		t.Errorf("no pay in text must stay unknown: %+v", byID["2"])
+	}
+	if byID["3"] != field {
+		t.Errorf("structured pay must win over text: %+v", byID["3"])
+	}
+	if len(rep.Rows) != 3 {
+		t.Errorf("rows = %d, unknown pay must never be dropped", len(rep.Rows))
+	}
+
+	// Off: no description fetch, no parsing.
+	a2 := &optsAdapter{jobs: a.jobs[:1]}
+	rep, _ = Run(context.Background(), []Task{{Adapter: a2, Board: "b"}}, f, Config{})
+	if a2.got.Descriptions || rep.Rows[0].Pay.Known() {
+		t.Errorf("DescriptionPay off: opts=%+v pay=%+v", a2.got, rep.Rows[0].Pay)
+	}
+}

@@ -15,6 +15,7 @@ import (
 
 	"github.com/joelrmartinez/connie/ats"
 	"github.com/joelrmartinez/connie/internal/filter"
+	"github.com/joelrmartinez/connie/internal/pay"
 	"github.com/joelrmartinez/connie/internal/store"
 )
 
@@ -33,6 +34,9 @@ type Config struct {
 	PerBoardTimeout time.Duration
 	// Progress, when set, is called after each board completes.
 	Progress func(done, total int)
+	// DescriptionPay fetches descriptions and parses pay from the text
+	// for postings whose ATS gave no structured pay.
+	DescriptionPay bool
 }
 
 // Report is the outcome of a scan.
@@ -65,7 +69,7 @@ func Run(ctx context.Context, tasks []Task, f *filter.Filter, cfg Config) (Repor
 	if cfg.PerBoardTimeout <= 0 {
 		cfg.PerBoardTimeout = 30 * time.Second
 	}
-	opt := ats.FetchOptions{Descriptions: f.NeedsDescriptions()}
+	opt := ats.FetchOptions{Descriptions: f.NeedsDescriptions() || cfg.DescriptionPay}
 
 	feed := make(chan Task)
 	results := make(chan result)
@@ -88,7 +92,7 @@ func Run(ctx context.Context, tasks []Task, f *filter.Filter, cfg Config) (Repor
 		go func() {
 			defer func() { done <- struct{}{} }()
 			for t := range feed {
-				results <- work(ctx, t, f, opt, cfg.PerBoardTimeout)
+				results <- work(ctx, t, f, opt, cfg)
 			}
 		}()
 	}
@@ -142,7 +146,8 @@ func Run(ctx context.Context, tasks []Task, f *filter.Filter, cfg Config) (Repor
 
 // work fetches and filters one board. A non-404 failure gets one retry —
 // the httpx client has already retried transport-level faults underneath.
-func work(ctx context.Context, t Task, f *filter.Filter, opt ats.FetchOptions, timeout time.Duration) result {
+func work(ctx context.Context, t Task, f *filter.Filter, opt ats.FetchOptions, cfg Config) result {
+	timeout := cfg.PerBoardTimeout
 	jobs, err := fetchOnce(ctx, t, opt, timeout)
 	if err != nil && !errors.Is(err, ats.ErrBoardNotFound) && ctx.Err() == nil {
 		jobs, err = fetchOnce(ctx, t, opt, timeout)
@@ -158,6 +163,11 @@ func work(ctx context.Context, t Task, f *filter.Filter, opt ats.FetchOptions, t
 			continue
 		}
 		row := store.Row{Job: j}
+		if cfg.DescriptionPay && !row.Pay.Known() {
+			if p, ok := pay.Parse(filter.PlainText(j.Description)); ok {
+				row.Pay = p
+			}
+		}
 		if len(frags) > 0 {
 			row.Matched = frags[0]
 			for _, fr := range frags[1:] {

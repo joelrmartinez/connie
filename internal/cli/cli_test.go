@@ -284,3 +284,19 @@ func TestFlagsOverrideSavedSearch(t *testing.T) {
 		t.Fatal("missing --config should fail")
 	}
 }
+
+func TestScanReportsPay(t *testing.T) {
+	srv := atsServer(t)
+	dir := setupDirs(t)
+	code, errOut := run(t, srv, "scan", "--all", "--desc-pay", "--out", "run", "--no-db")
+	if code != 0 {
+		t.Fatalf("scan: %s", errOut)
+	}
+	if !strings.Contains(errOut, "unknown (flagged, kept)") {
+		t.Fatalf("no pay summary in:\n%s", errOut)
+	}
+	records := csvRecords(t, filepath.Join(dir, "run.csv"))
+	if len(records) != 1+9 || records[0][len(records[0])-1] != "pay_flag" {
+		t.Fatalf("rows=%d header=%v", len(records), records[0])
+	}
+}

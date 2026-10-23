@@ -42,8 +42,15 @@ type posting struct {
 		Team       string `json:"team"`
 		Commitment string `json:"commitment"`
 	} `json:"categories"`
-	DescriptionPlain string `json:"descriptionPlain"`
-	Lists            []struct {
+	SalaryRange *struct {
+		Min      float64 `json:"min"`
+		Max      float64 `json:"max"`
+		Currency string  `json:"currency"`
+		Interval string  `json:"interval"` // e.g. "per-year-salary", "per-hour-wage"
+	} `json:"salaryRange"`
+	SalaryDescriptionPlain string `json:"salaryDescriptionPlain"`
+	DescriptionPlain       string `json:"descriptionPlain"`
+	Lists                  []struct {
 		Text    string `json:"text"`
 		Content string `json:"content"`
 	} `json:"lists"`
@@ -80,13 +87,17 @@ func (a *Adapter) Fetch(ctx context.Context, slug string, opt ats.FetchOptions) 
 				strings.Contains(strings.ToLower(p.Categories.Location), "remote"),
 			URL: p.HostedURL,
 		}
+		if sr := p.SalaryRange; sr != nil && (sr.Min > 0 || sr.Max > 0) {
+			job.Pay = ats.Pay{Min: sr.Min, Max: sr.Max, Currency: sr.Currency,
+				Period: ats.PeriodFromText(sr.Interval), Source: ats.PayFromField}
+		}
 		if p.CreatedAt > 0 {
 			job.PublishedAt = time.UnixMilli(p.CreatedAt).UTC()
 		}
 		if opt.Descriptions {
 			// descriptionPlain plus every list section (requirements, benefits,
 			// ...) — the lists are where the real keywords live (lever.py lesson).
-			parts := []string{p.DescriptionPlain}
+			parts := []string{p.DescriptionPlain, p.SalaryDescriptionPlain}
 			for _, l := range p.Lists {
 				parts = append(parts, l.Text, l.Content)
 			}

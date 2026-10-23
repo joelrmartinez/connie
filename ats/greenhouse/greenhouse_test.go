@@ -117,3 +117,30 @@ func TestName(t *testing.T) {
 		t.Fatalf("Name() = %q, want greenhouse", got)
 	}
 }
+
+func TestFetchPay(t *testing.T) {
+	t.Parallel()
+	b, err := os.ReadFile("testdata/jobs_pay.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := &stubGetter{body: b}
+	jobs, err := New(g).Fetch(context.Background(), "acme", ats.FetchOptions{Descriptions: true})
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	if !strings.Contains(g.gotURL, "pay_transparency=true") || !strings.Contains(g.gotURL, "content=true") {
+		t.Fatalf("URL = %q", g.gotURL)
+	}
+	want := []ats.Pay{
+		// Zones fold into one span; the CAD range is a different currency.
+		{Min: 135000, Max: 190000, Currency: "USD", Period: ats.PerYear, Source: ats.PayFromField},
+		{Min: 25, Max: 32, Currency: "USD", Period: ats.PerHour, Source: ats.PayFromField},
+		{},
+	}
+	for i, w := range want {
+		if jobs[i].Pay != w {
+			t.Errorf("job %d pay = %+v, want %+v", i, jobs[i].Pay, w)
+		}
+	}
+}

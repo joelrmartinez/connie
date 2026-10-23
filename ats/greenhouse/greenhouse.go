@@ -2,7 +2,7 @@
 // Endpoint: https://boards-api.greenhouse.io/v1/boards/{slug}/jobs — no auth.
 // ?content=true roughly doubles the payload and is requested only when
 // descriptions are needed; it is also the only variant that ships
-// departments and offices.
+// departments and offices. ?pay_transparency=true adds pay ranges.
 package greenhouse
 
 import (
@@ -48,14 +48,58 @@ type response struct {
 		Departments []struct {
 			Name string `json:"name"`
 		} `json:"departments"` // content=true only
+		PayInputRanges []payRange `json:"pay_input_ranges"` // pay_transparency=true only
 	} `json:"jobs"`
+}
+
+// payRange is one Greenhouse pay transparency range, in cents. Boards
+// often post several (one per zone or tier).
+type payRange struct {
+	MinCents     int64  `json:"min_cents"`
+	MaxCents     int64  `json:"max_cents"`
+	CurrencyType string `json:"currency_type"`
+}
+
+// hourlyCeiling separates hourly from annual ranges. Greenhouse does not
+// state a period, and no annual salary is under 1,000.
+const hourlyCeiling = 1000
+
+// payOf folds every range in the first range's currency into one span:
+// the lowest minimum to the highest maximum.
+func payOf(rs []payRange) ats.Pay {
+	var p ats.Pay
+	for _, r := range rs {
+		if r.MinCents <= 0 && r.MaxCents <= 0 {
+			continue
+		}
+		if p.Source == "" {
+			p = ats.Pay{Currency: r.CurrencyType, Source: ats.PayFromField}
+		}
+		if r.CurrencyType != p.Currency {
+			continue
+		}
+		lo, hi := float64(r.MinCents)/100, float64(r.MaxCents)/100
+		if lo > 0 && (p.Min == 0 || lo < p.Min) {
+			p.Min = lo
+		}
+		if hi > p.Max {
+			p.Max = hi
+		}
+	}
+	if p.Source != "" {
+		p.Period = ats.PerYear
+		if max(p.Min, p.Max) < hourlyCeiling {
+			p.Period = ats.PerHour
+		}
+	}
+	return p
 }
 
 // Fetch implements ats.Adapter.
 func (a *Adapter) Fetch(ctx context.Context, slug string, opt ats.FetchOptions) ([]ats.Job, error) {
-	u := endpoint + url.PathEscape(slug) + "/jobs"
+	u := endpoint + url.PathEscape(slug) + "/jobs?pay_transparency=true"
 	if opt.Descriptions {
-		u += "?content=true"
+		u += "&content=true"
 	}
 
 	body, err := a.client.Get(ctx, u)
@@ -89,6 +133,7 @@ func (a *Adapter) Fetch(ctx context.Context, slug string, opt ats.FetchOptions) 
 			Department: strings.Join(depts, ", "),
 			Remote:     strings.Contains(strings.ToLower(j.Location.Name), "remote"),
 			URL:        j.AbsoluteURL,
+			Pay:        payOf(j.PayInputRanges),
 		}
 		if t, err := time.Parse(time.RFC3339, j.FirstPublished); err == nil {
 			job.PublishedAt = t

@@ -1,0 +1,6 @@
+[
+ {"id":"l1","text":"RevOps Engineer","hostedUrl":"https://jobs.lever.co/acme/l1","workplaceType":"remote","categories":{"location":"Remote, US"},
+  "salaryRange":{"min":140000,"max":175000,"currency":"USD","interval":"per-year-salary"},
+  "salaryDescriptionPlain":"The base salary range is $140,000 - $175,000.","descriptionPlain":"Build revenue systems."},
+ {"id":"l2","text":"Field Marketing Manager","hostedUrl":"https://jobs.lever.co/acme/l2","workplaceType":"onsite","categories":{"location":"Seattle"}}
+]

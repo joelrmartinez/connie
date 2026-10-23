@@ -131,3 +131,25 @@ func TestName(t *testing.T) {
 		t.Fatalf("Name() = %q, want lever", got)
 	}
 }
+
+func TestFetchPay(t *testing.T) {
+	t.Parallel()
+	b, err := os.ReadFile("testdata/postings_pay.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	jobs, err := New(&stubGetter{body: b}).Fetch(context.Background(), "acme", ats.FetchOptions{Descriptions: true})
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+	want := ats.Pay{Min: 140000, Max: 175000, Currency: "USD", Period: ats.PerYear, Source: ats.PayFromField}
+	if jobs[0].Pay != want {
+		t.Errorf("pay = %+v, want %+v", jobs[0].Pay, want)
+	}
+	if !strings.Contains(jobs[0].Description, "$140,000") {
+		t.Errorf("salary description not kept in text: %q", jobs[0].Description)
+	}
+	if jobs[1].Pay.Known() {
+		t.Errorf("missing salaryRange should stay unknown: %+v", jobs[1].Pay)
+	}
+}

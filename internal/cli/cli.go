@@ -221,7 +221,7 @@ func runScan(args []string) int {
 		return fail(fmt.Errorf("choose a mode: --title, --grep, or --all (or save one with `connie init`)"))
 	}
 	if *grep != "" && !strings.Contains(*grep, `\b`) {
-		fmt.Fprintf(stderr, "note: pattern %q has no \\b word boundaries — substring matches can be noisy\n", *grep)
+		fmt.Fprintf(stderr, "note: pattern %q has no \\b word boundaries; substring matches can be noisy\n", *grep)
 	}
 
 	var fopts []filter.Option
@@ -287,7 +287,7 @@ func runScan(args []string) int {
 	}
 	rep, scanErr := scan.Run(ctx, tasks, f, scfg)
 	if scanErr != nil {
-		fmt.Fprintf(stderr, "connie: %v — writing partial results\n", scanErr)
+		fmt.Fprintf(stderr, "connie: %v, writing partial results\n", scanErr)
 	}
 	if ranker != nil {
 		for i := range rep.Rows {

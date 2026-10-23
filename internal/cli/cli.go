@@ -155,6 +155,7 @@ func runScan(args []string) int {
 		noDB        = fs.Bool("no-db", false, "skip the Registry")
 		cfgPath     = fs.String("config", config.DefaultPath, "saved search file; flags override it")
 		noConfig    = fs.Bool("no-config", false, "ignore the saved search file")
+		descPay     = fs.Bool("desc-pay", false, "parse pay from description text when the ATS gives none (default from config pay.count_description)")
 	)
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -167,6 +168,9 @@ func runScan(args []string) int {
 		if cfg, err = loadConfig(*cfgPath, set["config"]); err != nil {
 			return fail(err)
 		}
+	}
+	if cfg != nil && !set["desc-pay"] {
+		*descPay = cfg.Pay.CountDescription
 	}
 	if cfg != nil && !set["ats"] && len(cfg.ATS) > 0 {
 		*atsList = cfg.ATSList()
@@ -236,6 +240,7 @@ func runScan(args []string) int {
 	scfg := scan.Config{
 		Concurrency:     *concurrency,
 		PerBoardTimeout: *timeout,
+		DescriptionPay:  *descPay,
 		Progress: func(done, total int) {
 			if done%100 == 0 || done == total {
 				fmt.Fprintf(stderr, "  %d/%d boards\n", done, total)
@@ -273,10 +278,28 @@ func runScan(args []string) int {
 
 	fmt.Fprintf(stderr, "%d postings -> %s.csv, %s.json | %d dead boards | %d errors\n",
 		len(rep.Rows), *outPrefix, *outPrefix, len(rep.Dead), rep.Errs)
+	fmt.Fprintln(stderr, paySummary(rep.Rows))
 	if scanErr != nil {
 		return 1
 	}
 	return 0
+}
+
+// paySummary counts how pay was found, so unknown pay is visible at a
+// glance rather than only in a CSV column.
+func paySummary(rows []store.Row) string {
+	var field, parsed, unknown int
+	for _, r := range rows {
+		switch r.Pay.Source {
+		case ats.PayFromField:
+			field++
+		case ats.PayFromDescription:
+			parsed++
+		default:
+			unknown++
+		}
+	}
+	return fmt.Sprintf("pay: %d from ATS fields, %d parsed from descriptions, %d unknown (flagged, kept)", field, parsed, unknown)
 }
 
 // setFlags reports which flags were given explicitly, so a config value
@@ -460,7 +483,7 @@ func runQuery(args []string) int {
 		return exitOn(export.JSON(stdout, out))
 	case "table":
 		for _, r := range out {
-			fmt.Fprintf(stdout, "%-11s %-24s %-52s %s\n", r.ATS, truncate(r.Board, 24), truncate(r.Title, 52), r.URL)
+			fmt.Fprintf(stdout, "%-11s %-24s %-52s %-30s %s\n", r.ATS, truncate(r.Board, 24), truncate(r.Title, 52), r.Pay, r.URL)
 		}
 		fmt.Fprintf(stderr, "%d postings\n", len(out))
 		return 0

@@ -7,7 +7,9 @@
 //     job proves nothing);
 //   - closing is scoped to (ats, board) pairs the run actually covered;
 //   - a posting that reappears is reopened;
-//   - grep context (matched) from an earlier run survives runs without grep.
+//   - grep context (matched) from an earlier run survives runs without grep;
+//   - known pay from an earlier run survives runs that found none, so a run
+//     without description parsing does not erase parsed pay.
 package store
 
 import (
@@ -47,6 +49,47 @@ CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
 INSERT INTO schema_version (version)
     SELECT 1 WHERE NOT EXISTS (SELECT 1 FROM schema_version);
 `
+
+// migrations upgrade a Registry one version at a time. Index i moves the
+// schema from version i+1 to i+2. Each runs in its own transaction, so an
+// existing connie.db upgrades in place on first open and a failed step
+// leaves it at the last good version.
+var migrations = []string{
+	// v1 -> v2: pay. Zero amounts and empty strings mean unknown.
+	`ALTER TABLE jobs ADD COLUMN pay_min      REAL NOT NULL DEFAULT 0;
+     ALTER TABLE jobs ADD COLUMN pay_max      REAL NOT NULL DEFAULT 0;
+     ALTER TABLE jobs ADD COLUMN pay_currency TEXT NOT NULL DEFAULT '';
+     ALTER TABLE jobs ADD COLUMN pay_period   TEXT NOT NULL DEFAULT '';
+     ALTER TABLE jobs ADD COLUMN pay_source   TEXT NOT NULL DEFAULT '';`,
+}
+
+// SchemaVersion is the version a freshly opened Registry is at.
+var SchemaVersion = 1 + len(migrations)
+
+func migrate(db *sql.DB) error {
+	var v int
+	if err := db.QueryRow("SELECT version FROM schema_version").Scan(&v); err != nil {
+		return fmt.Errorf("read schema version: %w", err)
+	}
+	for ; v < SchemaVersion; v++ {
+		tx, err := db.Begin()
+		if err != nil {
+			return fmt.Errorf("begin migration to v%d: %w", v+1, err)
+		}
+		if _, err := tx.Exec(migrations[v-1]); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("migrate to v%d: %w", v+1, err)
+		}
+		if _, err := tx.Exec("UPDATE schema_version SET version = ?", v+1); err != nil {
+			tx.Rollback()
+			return fmt.Errorf("record v%d: %w", v+1, err)
+		}
+		if err := tx.Commit(); err != nil {
+			return fmt.Errorf("commit v%d: %w", v+1, err)
+		}
+	}
+	return nil
+}
 
 // Store is an open Registry.
 type Store struct {
@@ -104,6 +147,10 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("apply schema to %q: %w", path, err)
 	}
+	if err := migrate(db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("upgrade %q: %w", path, err)
+	}
 	return &Store{db: db}, nil
 }
 
@@ -113,8 +160,9 @@ func (s *Store) Close() error { return s.db.Close() }
 const upsertSQL = `
 INSERT INTO jobs (key, ats, board, external_id, title, location, department,
                   team, employment_type, remote, url, published_at, matched,
-                  first_seen, last_seen, closed_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+                  first_seen, last_seen, closed_at,
+                  pay_min, pay_max, pay_currency, pay_period, pay_source)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)
 ON CONFLICT(key) DO UPDATE SET
     title           = excluded.title,
     location        = excluded.location,
@@ -127,7 +175,12 @@ ON CONFLICT(key) DO UPDATE SET
     matched         = CASE WHEN excluded.matched != ''
                            THEN excluded.matched ELSE jobs.matched END,
     last_seen       = excluded.last_seen,
-    closed_at       = NULL
+    closed_at       = NULL,
+    pay_min      = CASE WHEN excluded.pay_source != '' THEN excluded.pay_min      ELSE jobs.pay_min END,
+    pay_max      = CASE WHEN excluded.pay_source != '' THEN excluded.pay_max      ELSE jobs.pay_max END,
+    pay_currency = CASE WHEN excluded.pay_source != '' THEN excluded.pay_currency ELSE jobs.pay_currency END,
+    pay_period   = CASE WHEN excluded.pay_source != '' THEN excluded.pay_period   ELSE jobs.pay_period END,
+    pay_source   = CASE WHEN excluded.pay_source != '' THEN excluded.pay_source   ELSE jobs.pay_source END
 `
 
 // Upsert writes rows in one transaction stamped seenAt. covered lists the
@@ -171,7 +224,8 @@ func (s *Store) Upsert(rows []Row, seenAt time.Time, covered []BoardRef) (Result
 		}
 		if _, err := insert.Exec(key, r.ATS, r.Board, r.ExternalID, r.Title,
 			r.Location, r.Department, r.Team, r.EmploymentType, r.Remote,
-			r.URL, published, r.Matched, stamp, stamp); err != nil {
+			r.URL, published, r.Matched, stamp, stamp,
+			r.Pay.Min, r.Pay.Max, r.Pay.Currency, r.Pay.Period, r.Pay.Source); err != nil {
 			return Result{}, fmt.Errorf("upsert key %q: %w", key, err)
 		}
 	}
@@ -207,7 +261,8 @@ func (s *Store) Upsert(rows []Row, seenAt time.Time, covered []BoardRef) (Result
 func (s *Store) Query(opts QueryOptions) ([]StoredRow, error) {
 	q := `SELECT key, ats, board, external_id, title, location, department,
                  team, employment_type, remote, url, published_at, matched,
-                 first_seen, last_seen, closed_at
+                 first_seen, last_seen, closed_at,
+                 pay_min, pay_max, pay_currency, pay_period, pay_source
           FROM jobs WHERE 1=1`
 	var args []any
 	if opts.OpenOnly {
@@ -237,7 +292,8 @@ func (s *Store) Query(opts QueryOptions) ([]StoredRow, error) {
 		)
 		if err := rows.Scan(&key, &r.ATS, &r.Board, &r.ExternalID, &r.Title,
 			&r.Location, &r.Department, &r.Team, &r.EmploymentType, &r.Remote,
-			&r.URL, &published, &r.Matched, &first, &last, &closed); err != nil {
+			&r.URL, &published, &r.Matched, &first, &last, &closed,
+			&r.Pay.Min, &r.Pay.Max, &r.Pay.Currency, &r.Pay.Period, &r.Pay.Source); err != nil {
 			return nil, fmt.Errorf("scan row: %w", err)
 		}
 		if published != "" {

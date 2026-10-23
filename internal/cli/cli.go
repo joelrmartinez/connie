@@ -24,9 +24,9 @@ import (
 	"github.com/joelrmartinez/connie/internal/filter"
 	"github.com/joelrmartinez/connie/internal/httpx"
 	"github.com/joelrmartinez/connie/internal/place"
+	"github.com/joelrmartinez/connie/internal/rank"
 	"github.com/joelrmartinez/connie/internal/scan"
 	"github.com/joelrmartinez/connie/internal/store"
-	"github.com/joelrmartinez/connie/internal/titles"
 )
 
 const version = "connie 0.1.0"
@@ -156,6 +156,8 @@ func runScan(args []string) int {
 		noDB        = fs.Bool("no-db", false, "skip the Registry")
 		cfgPath     = fs.String("config", config.DefaultPath, "saved search file; flags override it")
 		noConfig    = fs.Bool("no-config", false, "ignore the saved search file")
+		hardFilter  = fs.Bool("hard-filter", false, "with a saved search, drop postings outside its titles and locations instead of ranking them")
+		top         = fs.Int("top", 10, "with a saved search, print the N best-ranked postings (0 for none)")
 		descPay     = fs.Bool("desc-pay", false, "parse pay from description text when the ATS gives none (default from config pay.count_description)")
 	)
 	if err := fs.Parse(args); err != nil {
@@ -204,13 +206,18 @@ func runScan(args []string) int {
 	if *remote {
 		fopts = append(fopts, filter.WithRemoteOnly())
 	}
-	var families *titles.Table
+	var ranker *rank.Ranker
 	if useSaved {
+		ranker = rank.New(cfg)
 		loc := cfg.Location
-		families = titles.New(cfg.Titles, cfg.Variants)
-		fopts = append(fopts,
-			filter.WithPredicate(func(j ats.Job) bool { _, ok := families.Classify(j.Title); return ok }),
-			filter.WithPredicate(func(j ats.Job) bool { return place.Acceptable(place.Judge(j, loc)) }))
+		// Ranking keeps anything with some title fit and lets the score sort
+		// it; --hard-filter restores the strict family and location filter.
+		fopts = append(fopts, filter.WithPredicate(func(j ats.Job) bool { return ranker.Score(j).Title > 0 }))
+		if *hardFilter {
+			fopts = append(fopts,
+				filter.WithPredicate(func(j ats.Job) bool { return ranker.Score(j).Title == 1 }),
+				filter.WithPredicate(func(j ats.Job) bool { return place.Acceptable(place.Judge(j, loc)) }))
+		}
 	}
 	f, err := filter.New(fopts...)
 	if err != nil {
@@ -254,9 +261,10 @@ func runScan(args []string) int {
 	if scanErr != nil {
 		fmt.Fprintf(stderr, "connie: %v — writing partial results\n", scanErr)
 	}
-	if families != nil {
+	if ranker != nil {
 		for i := range rep.Rows {
-			rep.Rows[i].Family, _ = families.Classify(rep.Rows[i].Title)
+			sc := ranker.Score(rep.Rows[i].Job)
+			rep.Rows[i].Family, rep.Rows[i].Score, rep.Rows[i].Reason = sc.Family, sc.Total, sc.Reason
 		}
 	}
 	// A limited run never covers a board list exhaustively.
@@ -287,10 +295,27 @@ func runScan(args []string) int {
 	fmt.Fprintf(stderr, "%d postings -> %s.csv, %s.json | %d dead boards | %d errors\n",
 		len(rep.Rows), *outPrefix, *outPrefix, len(rep.Dead), rep.Errs)
 	fmt.Fprintln(stderr, paySummary(rep.Rows))
+	if ranker != nil {
+		printTop(export.Sorted(rep.Rows), *top)
+	}
 	if scanErr != nil {
 		return 1
 	}
 	return 0
+}
+
+// printTop writes the n best rows, already sorted, with their reasons.
+func printTop(rows []store.Row, n int) {
+	if n > len(rows) {
+		n = len(rows)
+	}
+	if n <= 0 {
+		return
+	}
+	fmt.Fprintf(stdout, "top %d of %d by score:\n", n, len(rows))
+	for i, r := range rows[:n] {
+		fmt.Fprintf(stdout, "%2d. %5.1f  %s @ %s\n      %s\n      %s\n", i+1, r.Score, r.Title, r.Board, r.Reason, r.URL)
+	}
 }
 
 // paySummary counts how pay was found, so unknown pay is visible at a

@@ -244,15 +244,44 @@ func TestScanUsesSavedSearch(t *testing.T) {
 	dir := setupDirs(t)
 	writeConfig(t, dir, testConfig)
 
+	var out bytes.Buffer
+	prevOut := stdout
+	stdout = &out
+	t.Cleanup(func() { stdout = prevOut })
+
 	code, errOut := run(t, srv, "scan", "--out", "run", "--no-db")
 	if code != 0 {
 		t.Fatalf("scan exit = %d, stderr:\n%s", code, errOut)
 	}
-	// Lever "Staff Platform Engineer" (remote US) and Ashby "Software
-	// Engineer" (remote, region unstated). Workable's onsite Greece role
-	// fails the location rule.
-	if got := len(csvRecords(t, filepath.Join(dir, "run.csv"))); got != 1+2 {
-		t.Fatalf("csv rows = %d, want header+2\n%s", got, errOut)
+	// Ranked: Lever "Staff Platform Engineer" (remote US) first, Ashby
+	// "Software Engineer" (remote, region unstated) next, and Workable's
+	// onsite Greece role kept but last.
+	records := csvRecords(t, filepath.Join(dir, "run.csv"))
+	if len(records) != 1+3 {
+		t.Fatalf("csv rows = %d, want header+3\n%s", len(records), errOut)
+	}
+	n := len(records[0])
+	if records[0][n-2] != "score" || records[0][n-1] != "reason" {
+		t.Fatalf("header = %v", records[0])
+	}
+	var titles []string
+	for _, r := range records[1:] {
+		titles = append(titles, r[3]+"="+r[n-2])
+	}
+	want := "Staff Platform Engineer (synthetic remote)=85.0|Software Engineer=80.0|Full-Stack Software Engineer=65.0"
+	if got := strings.Join(titles, "|"); got != want {
+		t.Errorf("ranked = %s\nwant     %s", got, want)
+	}
+	if !strings.Contains(records[3][n-1], "onsite Athens") || !strings.Contains(out.String(), "top 3 of 3") {
+		t.Errorf("reason %q / stdout:\n%s", records[3][n-1], out.String())
+	}
+
+	// --hard-filter restores the strict filter: Greece is dropped.
+	if code, errOut := run(t, srv, "scan", "--hard-filter", "--out", "hard", "--no-db"); code != 0 {
+		t.Fatalf("scan: %s", errOut)
+	}
+	if got := len(csvRecords(t, filepath.Join(dir, "hard.csv"))); got != 1+2 {
+		t.Fatalf("--hard-filter rows = %d, want header+2", got)
 	}
 }
 
@@ -296,7 +325,7 @@ func TestScanReportsPay(t *testing.T) {
 		t.Fatalf("no pay summary in:\n%s", errOut)
 	}
 	records := csvRecords(t, filepath.Join(dir, "run.csv"))
-	if len(records) != 1+9 || records[0][len(records[0])-2] != "pay_flag" {
+	if len(records) != 1+9 || records[0][len(records[0])-4] != "pay_flag" {
 		t.Fatalf("rows=%d header=%v", len(records), records[0])
 	}
 }

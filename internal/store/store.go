@@ -96,13 +96,15 @@ type Store struct {
 	db *sql.DB
 }
 
-// Row is a posting plus its grep context, as written by a scan. Family is
-// the saved-search title family it matched; it belongs to one run's
-// search, so it is exported but not stored.
+// Row is a posting plus its grep context, as written by a scan. Family,
+// Score, and Reason come from ranking against a saved search; they belong
+// to one run's search, so they are exported but not stored.
 type Row struct {
 	ats.Job
 	Matched string
 	Family  string
+	Score   float64
+	Reason  string
 }
 
 // StoredRow is a posting as read back, with its Registry history.

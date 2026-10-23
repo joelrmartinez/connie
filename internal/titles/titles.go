@@ -137,3 +137,39 @@ func containsRun(hay, needle []string) bool {
 	}
 	return false
 }
+
+// roleWords say what kind of job a title is rather than which one, so
+// they do not count toward a partial match.
+var roleWords = map[string]bool{
+	"engineer": true, "engineering": true, "manager": true, "systems": true,
+	"analyst": true, "developer": true, "architect": true, "specialist": true,
+	"administrator": true, "and": true, "of": true,
+}
+
+// Fit scores a raw title against the table: 1 for a family match, 0.5
+// when every word of some variant appears but not as one run (as in
+// "Engineer, Growth" or "Systems Engineer, Revenue"), else 0. A variant
+// needs at least one word that is not a role word, so "Engineer" alone
+// never earns partial credit. family is the best family seen.
+func (t *Table) Fit(raw string) (family string, score float64) {
+	if f, ok := t.Classify(raw); ok {
+		return f, 1
+	}
+	have := map[string]bool{}
+	for _, w := range strings.Fields(Normalize(raw)) {
+		have[w] = true
+	}
+	for _, f := range t.families {
+		for _, v := range f.variants {
+			distinct, all := false, true
+			for _, w := range v {
+				distinct = distinct || !roleWords[w]
+				all = all && (have[w] || w == "and" || w == "of")
+			}
+			if distinct && all {
+				return f.name, 0.5
+			}
+		}
+	}
+	return "", 0
+}

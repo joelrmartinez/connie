@@ -86,3 +86,28 @@ func TestLongestVariantWins(t *testing.T) {
 		t.Errorf("got %q", got)
 	}
 }
+
+func TestFit(t *testing.T) {
+	c := config.Defaults()
+	tab := New(c.Titles, c.Variants)
+	tests := []struct {
+		in     string
+		family string
+		score  float64
+	}{
+		{"GTM Engineer", "GTM Engineer", 1},
+		{"Engineer, Growth", "Growth Engineer", 0.5},
+		{"Systems Engineer, Revenue Platform", "Revenue Engineer", 0.5},
+		{"Revenue Operations Manager", "", 0},
+		{"Growth Marketing Manager", "", 0},
+		{"Sales Manager", "", 0},
+		{"Software Engineer", "", 0},
+		{"Account Executive", "", 0},
+	}
+	for _, tt := range tests {
+		f, s := tab.Fit(tt.in)
+		if f != tt.family || s != tt.score {
+			t.Errorf("Fit(%q) = %q %.2f, want %q %.2f", tt.in, f, s, tt.family, tt.score)
+		}
+	}
+}

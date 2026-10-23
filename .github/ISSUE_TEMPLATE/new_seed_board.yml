@@ -1,0 +1,23 @@
+name: New seed board
+description: Suggest a company board to add to seeds/
+labels: [seeds]
+body:
+  - type: dropdown
+    id: ats
+    attributes:
+      label: Hiring system
+      options: [Ashby, Greenhouse, Lever, Workable]
+    validations:
+      required: true
+  - type: input
+    id: url
+    attributes:
+      label: Board URL
+      placeholder: https://jobs.ashbyhq.com/example
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it is useful
+      description: Optional. What kinds of roles it posts.

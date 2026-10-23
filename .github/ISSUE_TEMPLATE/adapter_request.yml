@@ -1,0 +1,28 @@
+name: ATS adapter request
+description: Propose support for another applicant tracking system
+labels: [adapter]
+body:
+  - type: input
+    id: ats
+    attributes:
+      label: Hiring system name
+    validations:
+      required: true
+  - type: textarea
+    id: api
+    attributes:
+      label: Public API
+      description: Link to a public, unauthenticated job listing endpoint and an example board. Connie only uses public APIs meant for sharing postings.
+    validations:
+      required: true
+  - type: textarea
+    id: usage
+    attributes:
+      label: How common is it?
+      description: Roughly how many companies use it, and examples.
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contribution
+      options:
+        - label: I am willing to write the adapter with tests.

@@ -1,37 +1,96 @@
 # connie
 
-**The Circus's memory for public job boards.**
+**Connie finds jobs for you, fast.**
 
-Connie scans the free, unauthenticated APIs of four applicant-tracking
-systems — **Ashby, Greenhouse, Lever, and Workable** — filters the postings you care
-about, and *remembers every posting she has ever seen* in a local SQLite
-Registry: `first_seen`, `last_seen`, and a careful `closed_at` lifecycle.
-Run her on a schedule and the diff is a signal feed: **who started hiring
-for what, the day it opened.**
+Connie checks thousands of company job boards directly and finds the roles
+that match your search in seconds. It remembers every posting it has seen,
+so each time you run it you can see only what is new. It ranks results by
+how well the title, pay, and location fit what you want. It runs on your own
+computer, needs no account, and is free and open source (MIT).
 
-Named for Connie Sachs of *Tinker Tailor Soldier Spy* — the researcher whose
-head was the Registry. Sibling of [Merlin](https://pushtomain.xyz/work/merlin/)
-and [Lamplighter](https://pushtomain.xyz/work/lamplighter/).
+It reads the public job boards that companies host on four hiring systems:
+**Ashby, Greenhouse, Lever, and Workable.**
 
+## Quickstart (60 seconds)
+
+**1. Install.** Pick one:
+
+- **Download a binary** (no Go needed): grab the file for your system
+  (macOS, Linux, or Windows) from the
+  [Releases page](https://github.com/joelrmartinez/connie/releases), unpack
+  it, and put `connie` somewhere on your PATH. `checksums.txt` lets you
+  verify the download.
+- **Or install with Go** (needs Go 1.26 or newer):
+
+  ```sh
+  go install github.com/joelrmartinez/connie@latest
+  ```
+
+**2. Tell job sites how to reach you.** Connie puts this in every request so
+site owners can contact you instead of blocking you. Use a real address.
+
+```sh
+export CONNIE_CONTACT="you@example.com"
 ```
-$ export CONNIE_CONTACT="you@example.com"     # goes in the User-Agent — be a good citizen
-$ connie scan --title "revenue operations"
-  35/35 boards
-registry: 6 new, 0 updated, 0 closed (connie.db)
-6 postings -> connie-jobs.csv, connie-jobs.json | 0 dead boards | 0 errors
 
-$ connie query --open --since 24h --format table
-ashby   render   Revenue Operations Manager   https://jobs.ashbyhq.com/render/...
+**3. Save a search.** This writes `connie.yaml` with sensible defaults you
+can edit later (or run `connie init` to answer a few questions instead).
+
+```sh
+connie init --defaults
 ```
 
-## Install
+**4. Search.**
 
-```
-go install github.com/joelrmartinez/connie@latest
+```sh
+connie scan
 ```
 
-Or build from a clone: `make build` — one static binary, `CGO_ENABLED=0`,
-cross-compiles from anywhere (`make dist` targets linux/mac, amd64/arm64).
+You get a ranked list in your terminal, plus `connie-jobs.csv` (opens in any
+spreadsheet app) and `connie-jobs.json`.
+
+**5. See what is new since yesterday.**
+
+```sh
+connie query --open --since 24h --format table
+```
+
+Run `connie scan` once a day (by hand or on a schedule) and step 5 becomes a
+daily list of fresh openings.
+
+Want a quick one-off search without a saved file?
+
+```sh
+connie scan --title "revenue operations"
+```
+
+## Supported job boards
+
+| System     | Example board URL                          |
+|------------|--------------------------------------------|
+| Ashby      | `https://jobs.ashbyhq.com/<company>`       |
+| Greenhouse | `https://boards.greenhouse.io/<company>`     |
+| Lever      | `https://jobs.lever.co/<company>`          |
+| Workable   | `https://apply.workable.com/<company>`     |
+
+Connie ships with a curated list of companies for each system (`seeds/`).
+`connie discover` can find many more (see below).
+
+## Glossary
+
+- **Board:** one company's job page on one hiring system (for example,
+  `ashby/openai`).
+- **Posting:** a single job listing on a board.
+- **Seeds:** the built-in list of boards in `seeds/`, checked by hand.
+- **Registry:** the local database (`connie.db`) where connie remembers every
+  posting, when it first and last saw it, and when it closed.
+- **Saved search:** your `connie.yaml` file: titles, locations, pay floor,
+  and ranking weights.
+- **Dead board:** a board that no longer exists (the site returns "not found").
+- **Discover:** an optional step that finds more boards using the Internet
+  Archive's Wayback Machine.
+
+The rest of this README is reference and technical detail.
 
 ## Commands
 
@@ -51,7 +110,7 @@ connie version
   title it contains. The reverse direction requires a multi-word title, so a
   long query can't drag in every posting titled just *Engineer*.
 - **`--grep`** is a case-insensitive regex over posting *descriptions* (titles
-  are `--title`'s job). Only matched context fragments are kept — full
+  are `--title`'s job). Only matched context fragments are kept, full
   descriptions are ~95% of the payload and are never stored. Use `\b`
   boundaries: `--grep 'rust'` also matches *trust*.
 - **`--all`** takes every listed posting, and is the only mode allowed to
@@ -92,15 +151,15 @@ is not a family match in an acceptable location, as before.
 
 Two files per ATS, by design:
 
-- **`seeds/{ats}.json`** — committed, small, hand-curated and verified live.
+- **`seeds/{ats}.json`**, committed, small, hand-curated and verified live.
   A fresh clone scans real boards with zero network discovery.
-- **`boards/{ats}.json`** — gitignored. `connie discover` queries the Wayback
+- **`boards/{ats}.json`**, gitignored. `connie discover` queries the Wayback
   Machine's CDX index for every archived board URL, shape-filters the noise,
   probes survivors against the live ATS, and unions the result with the seed
   and the previous cache. **The union never shrinks**, and the full crawl
   never turns this repo into a published customer list.
 
-Heads up: Greenhouse's archive footprint is large — a full
+Heads up: Greenhouse's archive footprint is large, a full
 `connie discover --ats greenhouse` can surface tens of thousands of
 candidates and is best run overnight. Re-runs are safe and resumable by
 construction (union semantics).
@@ -111,7 +170,7 @@ Every posting is keyed `ats:board:external_id` and carries
 `first_seen` / `last_seen` / `closed_at`. The rules are deliberately
 conservative, and each is pinned by a test:
 
-- Only an **unfiltered** (`--all`) run may close postings — a filtered run
+- Only an **unfiltered** (`--all`) run may close postings, a filtered run
   not seeing a job proves nothing.
 - Closing is **scoped to boards the run actually scanned**; `--limit` and
   interrupted runs close nothing.
@@ -119,25 +178,25 @@ conservative, and each is pinned by a test:
 - Grep context from an earlier run survives later runs without `--grep`.
 
 `connie query --since 24h --open` is therefore exactly "what's new since
-yesterday" — the watch-mode primitive.
+yesterday", the watch-mode primitive.
 
 ## Design notes (why it's built this way)
 
 - **Why Go:** a scan is thousands of concurrent HTTP fetches. The pool in
   `internal/scan` is a plain channel worker pool where a single aggregator
-  goroutine owns all mutable state — no mutexes in the package, proven by
+  goroutine owns all mutable state, no mutexes in the package, proven by
   `go test -race`.
 - **Why not `errgroup`:** its cancel-on-first-error semantics are exactly
-  wrong here — one dead board must never abort a 3,600-board scan. Errors
+  wrong here, one dead board must never abort a 3,600-board scan. Errors
   are counted, not propagated.
-- **Why `modernc.org/sqlite`** (the only direct dependency): pure Go means
+- **Why `modernc.org/sqlite`** (the main dependency, alongside a YAML parser): pure Go means
   `CGO_ENABLED=0` and a genuinely static, trivially cross-compiled binary.
   Its write-speed penalty vs the CGO driver is irrelevant at one
   transaction per scan. Cost: transitive `modernc.org/*` packages and a
-  bigger binary — a fair trade for `GOOS=linux go build` just working.
+  bigger binary, a fair trade for `GOOS=linux go build` just working.
 - **404 is a fact, not a fault:** `ErrNotFound` never retries, dead boards
   self-prune from the discovery cache (never from seeds), and a failed
-  *probe* is tolerated — union semantics mean nothing is lost either way.
+  *probe* is tolerated, union semantics mean nothing is lost either way.
 - **The User-Agent is always pure ASCII.** An em-dash in a UA header once
   broke a predecessor's latin-1 header encoding. The sanitizer has a
   regression test.
@@ -151,7 +210,7 @@ yesterday" — the watch-mode primitive.
 make check    # gofmt, go vet, go test -race ./...
 ```
 
-Everything runs offline against recorded fixtures — trimmed captures of one
+Everything runs offline against recorded fixtures, trimmed captures of one
 real API response per ATS, never full crawls. One live smoke test exists
 behind a build tag:
 
@@ -163,14 +222,23 @@ CONNIE_CONTACT="you@example.com" go test -tags live ./ats/smoke -v
 
 This scrapes public, unauthenticated APIs that ATS vendors provide so
 postings can be shared. Be worthy of that: set `CONNIE_CONTACT`, keep
-`--concurrency` at the default 8, and don't run discovery in a loop.
+`--concurrency` at the default 8 (connie also never sends more than 2 requests
+at a time to any one site), and don't run discovery in a loop.
 
 ## Lineage
 
-The Ashby scan semantics — the fuzzy-match rules, the seed/cache split, the
-closed-at lifecycle — are ported from
+The Ashby scan semantics, the fuzzy-match rules, the seed/cache split, the
+closed-at lifecycle, are ported from
 [mherzog4/ashbyhq-jobs](https://github.com/mherzog4/ashbyhq-jobs), a
 single-file Python tool whose README documents six behaviors that look like
 bugs and are load-bearing. They survived the rewrite; so did the tests.
 
-MIT © Joel Martinez · [pushtomain.xyz](https://pushtomain.xyz)
+## Contributing
+
+Contributions are welcome: bug fixes, new seed boards, better parsing,
+docs. See [CONTRIBUTING.md](CONTRIBUTING.md). To report a security issue,
+see [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE) © Joel Martinez

@@ -28,10 +28,9 @@ import (
 	"github.com/joelrmartinez/connie/internal/rank"
 	"github.com/joelrmartinez/connie/internal/scan"
 	"github.com/joelrmartinez/connie/internal/store"
+	"github.com/joelrmartinez/connie/internal/version"
 	"github.com/joelrmartinez/connie/seeds"
 )
-
-const version = "connie 0.1.0"
 
 // Test seams. Production leaves these at their defaults.
 var (
@@ -40,7 +39,7 @@ var (
 	testTransport http.RoundTripper = nil
 )
 
-const usageText = `connie — the Circus's memory for public job boards
+const usageText = `connie: finds matching jobs on public company job boards
 
 Usage:
   connie init     [--defaults] [--out connie.yaml]          write a saved search (asks, or takes defaults)
@@ -69,7 +68,7 @@ func Run(args []string) int {
 	case "query":
 		return runQuery(args[1:])
 	case "version":
-		fmt.Fprintln(stdout, version)
+		fmt.Fprintln(stdout, "connie", version.Version)
 		return 0
 	default:
 		fmt.Fprintf(stderr, "connie: unknown command %q\n%s", args[0], usageText)
@@ -83,14 +82,15 @@ func fail(err error) int {
 }
 
 func userAgent() string {
-	ua := "connie/0.1 (+https://github.com/joelrmartinez/connie)"
-	if contact := os.Getenv("CONNIE_CONTACT"); contact != "" {
-		ua = fmt.Sprintf("connie/0.1 (+https://github.com/joelrmartinez/connie; contact: %s)", contact)
-	}
-	return ua
+	return version.UserAgent(os.Getenv("CONNIE_CONTACT"))
 }
 
+const contactWarning = "connie: warning: CONNIE_CONTACT is not set; set it to a real address so ATS operators can reach you (it goes in the User-Agent)\n"
+
 func newClient(extra ...httpx.Option) *httpx.Client {
+	if os.Getenv("CONNIE_CONTACT") == "" {
+		fmt.Fprint(stderr, contactWarning)
+	}
 	opts := append([]httpx.Option{httpx.WithUserAgent(userAgent())}, extra...)
 	if testTransport != nil {
 		opts = append(opts, httpx.WithBaseTransport(testTransport))

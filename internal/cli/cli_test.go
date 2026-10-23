@@ -214,3 +214,73 @@ func TestVersion(t *testing.T) {
 		t.Fatalf("version output = %q", out.String())
 	}
 }
+
+func csvRecords(t *testing.T, path string) [][]string {
+	t.Helper()
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read csv: %v", err)
+	}
+	records, err := csv.NewReader(strings.NewReader(strings.TrimPrefix(string(body), "\uFEFF"))).ReadAll()
+	if err != nil {
+		t.Fatalf("parse csv: %v", err)
+	}
+	return records
+}
+
+const testConfig = `titles: [Platform Engineer, Software Engineer]
+location: {remote: us}
+`
+
+func writeConfig(t *testing.T, dir, body string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, "connie.yaml"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestScanUsesSavedSearch(t *testing.T) {
+	srv := atsServer(t)
+	dir := setupDirs(t)
+	writeConfig(t, dir, testConfig)
+
+	code, errOut := run(t, srv, "scan", "--out", "run", "--no-db")
+	if code != 0 {
+		t.Fatalf("scan exit = %d, stderr:\n%s", code, errOut)
+	}
+	// Lever "Staff Platform Engineer" (remote US) and Ashby "Software
+	// Engineer" (remote, region unstated). Workable's onsite Greece role
+	// fails the location rule.
+	if got := len(csvRecords(t, filepath.Join(dir, "run.csv"))); got != 1+2 {
+		t.Fatalf("csv rows = %d, want header+2\n%s", got, errOut)
+	}
+}
+
+func TestFlagsOverrideSavedSearch(t *testing.T) {
+	srv := atsServer(t)
+	dir := setupDirs(t)
+	writeConfig(t, dir, testConfig+"ats: [lever]\n")
+
+	// --title replaces the saved titles; the file still picks the ATS.
+	if code, errOut := run(t, srv, "scan", "--title", "platform engineer", "--out", "a", "--no-db"); code != 0 {
+		t.Fatalf("scan: %s", errOut)
+	}
+	if got := len(csvRecords(t, filepath.Join(dir, "a.csv"))); got != 2 {
+		t.Fatalf("--title rows = %d, want header+1", got)
+	}
+	// --ats replaces the saved ATS list.
+	if code, errOut := run(t, srv, "scan", "--all", "--ats", "workable", "--out", "b", "--no-db"); code != 0 {
+		t.Fatalf("scan: %s", errOut)
+	}
+	if got := len(csvRecords(t, filepath.Join(dir, "b.csv"))); got != 1+2 {
+		t.Fatalf("--ats rows = %d, want header+2", got)
+	}
+	// --no-config with no mode flag is the old error.
+	if code, _ := run(t, srv, "scan", "--no-config", "--no-db"); code == 0 {
+		t.Fatal("--no-config without a mode should fail")
+	}
+	// A named config that does not exist is an error.
+	if code, _ := run(t, srv, "scan", "--config", "missing.yaml", "--no-db"); code == 0 {
+		t.Fatal("missing --config should fail")
+	}
+}

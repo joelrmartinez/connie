@@ -1,0 +1,29 @@
+# Saved search for quota-carrying sales roles.
+# Copy to connie.yaml in the directory you run connie from, then edit.
+# Every field is optional. Flags on the command line override this file.
+
+titles:
+  - Account Executive
+  - Sales Development Representative
+  - Solutions Engineer
+
+variants:
+  Account Executive: [enterprise account executive, mid-market account executive, ae]
+  Sales Development Representative: [sdr, bdr, business development representative]
+  Solutions Engineer: [sales engineer, solutions consultant, pre-sales engineer]
+
+location:
+  remote: us
+  cities: [New York, San Francisco]
+  hybrid: true
+
+pay:
+  floor: 0
+  count_description: true # sales postings often state OTE only in the text
+
+weights:
+  title: 50
+  pay: 30
+  location: 20
+
+ats: [ashby, greenhouse, lever, workable]

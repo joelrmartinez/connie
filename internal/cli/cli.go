@@ -18,10 +18,12 @@ import (
 	"github.com/joelrmartinez/connie/ats/greenhouse"
 	"github.com/joelrmartinez/connie/ats/lever"
 	"github.com/joelrmartinez/connie/ats/workable"
+	"github.com/joelrmartinez/connie/internal/config"
 	"github.com/joelrmartinez/connie/internal/discover"
 	"github.com/joelrmartinez/connie/internal/export"
 	"github.com/joelrmartinez/connie/internal/filter"
 	"github.com/joelrmartinez/connie/internal/httpx"
+	"github.com/joelrmartinez/connie/internal/place"
 	"github.com/joelrmartinez/connie/internal/scan"
 	"github.com/joelrmartinez/connie/internal/store"
 )
@@ -39,6 +41,7 @@ const usageText = `connie — the Circus's memory for public job boards
 
 Usage:
   connie scan     --title Q | --grep RE | --all   [flags]   scan boards, filter, export, remember
+                  (no mode flag: use the saved search in connie.yaml)
   connie discover [--ats ...]                     [flags]   harvest board slugs from the Wayback CDX
   connie query    [--open] [--since 24h] [flags]            read the Registry offline
   connie version
@@ -147,17 +150,37 @@ func runScan(args []string) int {
 		outPrefix   = fs.String("out", "connie-jobs", "output file prefix (.csv/.json)")
 		dbPath      = fs.String("db", "connie.db", "Registry path")
 		noDB        = fs.Bool("no-db", false, "skip the Registry")
+		cfgPath     = fs.String("config", config.DefaultPath, "saved search file; flags override it")
+		noConfig    = fs.Bool("no-config", false, "ignore the saved search file")
 	)
 	if err := fs.Parse(args); err != nil {
 		return 2
+	}
+	set := setFlags(fs)
+
+	var cfg *config.Config
+	if !*noConfig {
+		var err error
+		if cfg, err = loadConfig(*cfgPath, set["config"]); err != nil {
+			return fail(err)
+		}
+	}
+	if cfg != nil && !set["ats"] && len(cfg.ATS) > 0 {
+		*atsList = cfg.ATSList()
+	}
+	// The saved search supplies the mode only when no mode flag was given:
+	// --title, --grep, or --all on the command line replace it entirely.
+	useSaved := cfg != nil && len(cfg.Titles) > 0 && !*all && *title == "" && *grep == ""
+	if useSaved {
+		fmt.Fprintf(stderr, "using saved search %s (%d titles)\n", *cfgPath, len(cfg.Titles))
 	}
 
 	// Invariants ported from the reference.
 	if *all && (*title != "" || *grep != "") {
 		return fail(fmt.Errorf("--all conflicts with --title/--grep"))
 	}
-	if !*all && *title == "" && *grep == "" {
-		return fail(fmt.Errorf("choose a mode: --title, --grep, or --all"))
+	if !useSaved && !*all && *title == "" && *grep == "" {
+		return fail(fmt.Errorf("choose a mode: --title, --grep, or --all (or save one with `connie init`)"))
 	}
 	if *grep != "" && !strings.Contains(*grep, `\b`) {
 		fmt.Fprintf(stderr, "note: pattern %q has no \\b word boundaries — substring matches can be noisy\n", *grep)
@@ -172,6 +195,12 @@ func runScan(args []string) int {
 	}
 	if *remote {
 		fopts = append(fopts, filter.WithRemoteOnly())
+	}
+	if useSaved {
+		loc := cfg.Location
+		fopts = append(fopts,
+			filter.WithTitles(savedTitles(cfg)),
+			filter.WithPredicate(func(j ats.Job) bool { return place.Acceptable(place.Judge(j, loc)) }))
 	}
 	f, err := filter.New(fopts...)
 	if err != nil {
@@ -201,7 +230,7 @@ func runScan(args []string) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	cfg := scan.Config{
+	scfg := scan.Config{
 		Concurrency:     *concurrency,
 		PerBoardTimeout: *timeout,
 		Progress: func(done, total int) {
@@ -210,7 +239,7 @@ func runScan(args []string) int {
 			}
 		},
 	}
-	rep, scanErr := scan.Run(ctx, tasks, f, cfg)
+	rep, scanErr := scan.Run(ctx, tasks, f, scfg)
 	if scanErr != nil {
 		fmt.Fprintf(stderr, "connie: %v — writing partial results\n", scanErr)
 	}
@@ -245,6 +274,37 @@ func runScan(args []string) int {
 		return 1
 	}
 	return 0
+}
+
+// setFlags reports which flags were given explicitly, so a config value
+// can fill only the ones left at their defaults.
+func setFlags(fs *flag.FlagSet) map[string]bool {
+	set := map[string]bool{}
+	fs.Visit(func(f *flag.Flag) { set[f.Name] = true })
+	return set
+}
+
+// loadConfig reads the saved search. The default path may be absent; a
+// path the user named explicitly must exist.
+func loadConfig(path string, explicit bool) (*config.Config, error) {
+	cfg, err := config.Load(path)
+	if err != nil {
+		return nil, err
+	}
+	if cfg == nil && explicit {
+		return nil, fmt.Errorf("config %q not found", path)
+	}
+	return cfg, nil
+}
+
+// savedTitles is every title and variant in the saved search.
+func savedTitles(cfg *config.Config) []string {
+	var out []string
+	for _, t := range cfg.Titles {
+		out = append(out, t)
+		out = append(out, cfg.Variants[t]...)
+	}
+	return out
 }
 
 func writeExports(prefix string, rows []store.Row) error {

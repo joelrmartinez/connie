@@ -8,7 +8,7 @@ import "strings"
 var KnownVariants = map[string][]string{
 	"GTM Engineer":       {"go-to-market engineer", "gtm engineering", "gtm automation engineer"},
 	"GTM Systems":        {"gtm systems engineer", "sales systems", "marketing systems", "business systems"},
-	"Revenue Engineer":   {"revops engineer", "revenue operations engineer", "revenue systems", "revops"},
+	"Revenue Engineer":   {"revops engineer", "revenue operations engineer", "revenue systems"},
 	"Growth Engineer":    {"growth engineering", "product growth engineer"},
 	"Account Executive":  {"enterprise account executive", "mid-market account executive"},
 	"Solutions Engineer": {"sales engineer", "solutions consultant", "pre-sales engineer"},

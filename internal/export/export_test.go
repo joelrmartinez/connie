@@ -42,7 +42,7 @@ func TestCSV(t *testing.T) {
 	}
 	wantHeader := []string{"ats", "board", "external_id", "title", "location",
 		"department", "team", "employment_type", "remote", "url", "published_at", "matched",
-		"pay_min", "pay_max", "pay_currency", "pay_period", "pay_source", "pay_flag"}
+		"pay_min", "pay_max", "pay_currency", "pay_period", "pay_source", "pay_flag", "family"}
 	if strings.Join(records[0], ",") != strings.Join(wantHeader, ",") {
 		t.Fatalf("header = %v, want %v", records[0], wantHeader)
 	}
@@ -111,7 +111,7 @@ func TestPayColumnsAndFlags(t *testing.T) {
 		t.Fatal(err)
 	}
 	records, _ := csv.NewReader(strings.NewReader(strings.TrimPrefix(buf.String(), "\uFEFF"))).ReadAll()
-	tail := func(r []string) string { return strings.Join(r[len(r)-6:], "|") }
+	tail := func(r []string) string { return strings.Join(r[len(r)-7:len(r)-1], "|") }
 	want := []string{
 		"150000|180000|USD|year|field|",
 		"45|60.5|USD|hour|description|parsed",

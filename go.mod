@@ -2,7 +2,10 @@ module github.com/joelrmartinez/connie
 
 go 1.26
 
-require modernc.org/sqlite v1.54.0
+require (
+	go.yaml.in/yaml/v3 v3.0.5
+	modernc.org/sqlite v1.54.0
+)
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
@@ -10,7 +13,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/sys v0.46.0 // indirect
 	modernc.org/libc v1.74.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect

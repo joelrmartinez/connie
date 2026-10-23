@@ -13,6 +13,7 @@ import (
 
 	"github.com/joelrmartinez/connie/internal/discover"
 	"github.com/joelrmartinez/connie/internal/store"
+	"github.com/joelrmartinez/connie/internal/version"
 )
 
 // rewriteTransport sends every request to the test server, whatever host
@@ -327,5 +328,37 @@ func TestScanReportsPay(t *testing.T) {
 	records := csvRecords(t, filepath.Join(dir, "run.csv"))
 	if len(records) != 1+9 || records[0][len(records[0])-4] != "pay_flag" {
 		t.Fatalf("rows=%d header=%v", len(records), records[0])
+	}
+}
+
+func TestContactWarning(t *testing.T) {
+	var buf bytes.Buffer
+	prev := stderr
+	stderr = &buf
+	t.Cleanup(func() { stderr = prev })
+
+	t.Setenv("CONNIE_CONTACT", "")
+	newClient()
+	if !strings.Contains(buf.String(), "CONNIE_CONTACT is not set") {
+		t.Fatalf("no warning when unset: %q", buf.String())
+	}
+	buf.Reset()
+	t.Setenv("CONNIE_CONTACT", "you@example.com")
+	newClient()
+	if buf.Len() != 0 {
+		t.Fatalf("unexpected warning when set: %q", buf.String())
+	}
+	if !strings.Contains(userAgent(), "contact: you@example.com") {
+		t.Fatalf("userAgent() = %q", userAgent())
+	}
+}
+
+func TestVersionCommand(t *testing.T) {
+	var buf bytes.Buffer
+	prev := stdout
+	stdout = &buf
+	t.Cleanup(func() { stdout = prev })
+	if code := Run([]string{"version"}); code != 0 || !strings.Contains(buf.String(), version.Version) {
+		t.Fatalf("version: code=%d out=%q", code, buf.String())
 	}
 }

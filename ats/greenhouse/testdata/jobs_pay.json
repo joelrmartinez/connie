@@ -1,0 +1,10 @@
+{"jobs":[
+ {"id":1,"title":"Revenue Systems Engineer","absolute_url":"https://boards.greenhouse.io/acme/jobs/1","location":{"name":"Remote - US"},
+  "pay_input_ranges":[
+   {"min_cents":15000000,"max_cents":19000000,"currency_type":"USD","title":"Zone 1"},
+   {"min_cents":13500000,"max_cents":17000000,"currency_type":"USD","title":"Zone 2"},
+   {"min_cents":12000000,"max_cents":15000000,"currency_type":"CAD","title":"Canada"}]},
+ {"id":2,"title":"Support Specialist","absolute_url":"https://boards.greenhouse.io/acme/jobs/2","location":{"name":"Austin"},
+  "pay_input_ranges":[{"min_cents":2500,"max_cents":3200,"currency_type":"USD","title":"Hourly"}]},
+ {"id":3,"title":"Office Manager","absolute_url":"https://boards.greenhouse.io/acme/jobs/3","location":{"name":"Seattle"},"pay_input_ranges":[]}
+]}

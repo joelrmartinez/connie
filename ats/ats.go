@@ -1,7 +1,7 @@
 // Package ats defines the normalized job model and the adapter contracts
 // every ATS integration implements. Adapters live in subpackages (ashby,
-// greenhouse, lever); each is a thin fetch-and-map layer over one public,
-// unauthenticated board API.
+// greenhouse, lever, workable); each is a thin fetch-and-map layer over one
+// public, unauthenticated board API.
 package ats
 
 import (
@@ -17,7 +17,7 @@ var ErrBoardNotFound = errors.New("board not found")
 
 // Job is the normalized posting shared by all adapters.
 type Job struct {
-	ATS            string // "ashby", "greenhouse", "lever"
+	ATS            string // "ashby", "greenhouse", "lever", "workable"
 	Board          string // company slug on that ATS
 	ExternalID     string // ATS-native posting id
 	Title          string
@@ -29,6 +29,7 @@ type Job struct {
 	URL            string
 	PublishedAt    time.Time // zero if the ATS doesn't provide it
 	Description    string    // plain-ish text; empty unless FetchOptions.Descriptions
+	Pay            Pay       // structured pay when the ATS states it; zero when unknown
 }
 
 // Key is the cross-run identity: "ats:board:external_id". Namespacing by

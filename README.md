@@ -57,6 +57,37 @@ connie version
 - **`--all`** takes every listed posting, and is the only mode allowed to
   mark vanished postings closed (see lifecycle below).
 
+## Saved search (connie.yaml)
+
+Instead of retyping flags, save a search in `connie.yaml` in the directory
+you run connie from. Start from a template:
+
+```sh
+connie init                        # answer a few questions, writes connie.yaml
+connie init --defaults             # no questions (scripts, CI)
+cp examples/gtm.yaml connie.yaml   # or start from a template
+connie scan                        # no mode flag: uses connie.yaml
+```
+
+The file holds titles and their variants, location scope (remote US-only or
+anywhere, cities, whether hybrid counts), an optional pay floor, whether pay
+found in description text counts, ranking weights, and the ATS list.
+
+Flags always win. `--title`, `--grep`, or `--all` replace the saved titles
+and location rules; `--ats` replaces the saved ATS list. `--config PATH`
+reads another file and `--no-config` ignores it.
+
+With a saved search, results are ranked rather than filtered. Each posting
+with some title fit scores up to `weights.title + weights.pay +
+weights.location` (100 by default): title fit (a family or variant match is
+full marks, the right words in another order is half), pay (full when at or
+above the floor or when no floor is set, proportional below it, half when
+unknown), and location (remote US or a listed city with hybrid on is full
+marks). CSV and JSON are sorted by score and carry `family`, `score`, and a
+`reason` such as `title GTM Engineer, pay unknown, remote US`; the top
+`--top N` (default 10) print to stdout. `--hard-filter` drops anything that
+is not a family match in an acceptable location, as before.
+
 ## Where boards come from
 
 Two files per ATS, by design:

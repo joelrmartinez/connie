@@ -1,4 +1,4 @@
-// Package cli wires connie's subcommands: scan, discover, query, version.
+// Package cli wires connie's subcommands: init, scan, discover, query, version.
 package cli
 
 import (
@@ -18,10 +18,13 @@ import (
 	"github.com/joelrmartinez/connie/ats/greenhouse"
 	"github.com/joelrmartinez/connie/ats/lever"
 	"github.com/joelrmartinez/connie/ats/workable"
+	"github.com/joelrmartinez/connie/internal/config"
 	"github.com/joelrmartinez/connie/internal/discover"
 	"github.com/joelrmartinez/connie/internal/export"
 	"github.com/joelrmartinez/connie/internal/filter"
 	"github.com/joelrmartinez/connie/internal/httpx"
+	"github.com/joelrmartinez/connie/internal/place"
+	"github.com/joelrmartinez/connie/internal/rank"
 	"github.com/joelrmartinez/connie/internal/scan"
 	"github.com/joelrmartinez/connie/internal/store"
 )
@@ -38,7 +41,9 @@ var (
 const usageText = `connie — the Circus's memory for public job boards
 
 Usage:
+  connie init     [--defaults] [--out connie.yaml]          write a saved search (asks, or takes defaults)
   connie scan     --title Q | --grep RE | --all   [flags]   scan boards, filter, export, remember
+                  (no mode flag: use the saved search in connie.yaml)
   connie discover [--ats ...]                     [flags]   harvest board slugs from the Wayback CDX
   connie query    [--open] [--since 24h] [flags]            read the Registry offline
   connie version
@@ -53,6 +58,8 @@ func Run(args []string) int {
 		return 2
 	}
 	switch args[0] {
+	case "init":
+		return runInit(args[1:])
 	case "scan":
 		return runScan(args[1:])
 	case "discover":
@@ -147,17 +154,43 @@ func runScan(args []string) int {
 		outPrefix   = fs.String("out", "connie-jobs", "output file prefix (.csv/.json)")
 		dbPath      = fs.String("db", "connie.db", "Registry path")
 		noDB        = fs.Bool("no-db", false, "skip the Registry")
+		cfgPath     = fs.String("config", config.DefaultPath, "saved search file; flags override it")
+		noConfig    = fs.Bool("no-config", false, "ignore the saved search file")
+		hardFilter  = fs.Bool("hard-filter", false, "with a saved search, drop postings outside its titles and locations instead of ranking them")
+		top         = fs.Int("top", 10, "with a saved search, print the N best-ranked postings (0 for none)")
+		descPay     = fs.Bool("desc-pay", false, "parse pay from description text when the ATS gives none (default from config pay.count_description)")
 	)
 	if err := fs.Parse(args); err != nil {
 		return 2
+	}
+	set := setFlags(fs)
+
+	var cfg *config.Config
+	if !*noConfig {
+		var err error
+		if cfg, err = loadConfig(*cfgPath, set["config"]); err != nil {
+			return fail(err)
+		}
+	}
+	if cfg != nil && !set["desc-pay"] {
+		*descPay = cfg.Pay.CountDescription
+	}
+	if cfg != nil && !set["ats"] && len(cfg.ATS) > 0 {
+		*atsList = cfg.ATSList()
+	}
+	// The saved search supplies the mode only when no mode flag was given:
+	// --title, --grep, or --all on the command line replace it entirely.
+	useSaved := cfg != nil && len(cfg.Titles) > 0 && !*all && *title == "" && *grep == ""
+	if useSaved {
+		fmt.Fprintf(stderr, "using saved search %s (%d titles)\n", *cfgPath, len(cfg.Titles))
 	}
 
 	// Invariants ported from the reference.
 	if *all && (*title != "" || *grep != "") {
 		return fail(fmt.Errorf("--all conflicts with --title/--grep"))
 	}
-	if !*all && *title == "" && *grep == "" {
-		return fail(fmt.Errorf("choose a mode: --title, --grep, or --all"))
+	if !useSaved && !*all && *title == "" && *grep == "" {
+		return fail(fmt.Errorf("choose a mode: --title, --grep, or --all (or save one with `connie init`)"))
 	}
 	if *grep != "" && !strings.Contains(*grep, `\b`) {
 		fmt.Fprintf(stderr, "note: pattern %q has no \\b word boundaries — substring matches can be noisy\n", *grep)
@@ -172,6 +205,19 @@ func runScan(args []string) int {
 	}
 	if *remote {
 		fopts = append(fopts, filter.WithRemoteOnly())
+	}
+	var ranker *rank.Ranker
+	if useSaved {
+		ranker = rank.New(cfg)
+		loc := cfg.Location
+		// Ranking keeps anything with some title fit and lets the score sort
+		// it; --hard-filter restores the strict family and location filter.
+		fopts = append(fopts, filter.WithPredicate(func(j ats.Job) bool { return ranker.Score(j).Title > 0 }))
+		if *hardFilter {
+			fopts = append(fopts,
+				filter.WithPredicate(func(j ats.Job) bool { return ranker.Score(j).Title == 1 }),
+				filter.WithPredicate(func(j ats.Job) bool { return place.Acceptable(place.Judge(j, loc)) }))
+		}
 	}
 	f, err := filter.New(fopts...)
 	if err != nil {
@@ -201,18 +247,25 @@ func runScan(args []string) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	cfg := scan.Config{
+	scfg := scan.Config{
 		Concurrency:     *concurrency,
 		PerBoardTimeout: *timeout,
+		DescriptionPay:  *descPay,
 		Progress: func(done, total int) {
 			if done%100 == 0 || done == total {
 				fmt.Fprintf(stderr, "  %d/%d boards\n", done, total)
 			}
 		},
 	}
-	rep, scanErr := scan.Run(ctx, tasks, f, cfg)
+	rep, scanErr := scan.Run(ctx, tasks, f, scfg)
 	if scanErr != nil {
 		fmt.Fprintf(stderr, "connie: %v — writing partial results\n", scanErr)
+	}
+	if ranker != nil {
+		for i := range rep.Rows {
+			sc := ranker.Score(rep.Rows[i].Job)
+			rep.Rows[i].Family, rep.Rows[i].Score, rep.Rows[i].Reason = sc.Family, sc.Total, sc.Reason
+		}
 	}
 	// A limited run never covers a board list exhaustively.
 	if *limit > 0 {
@@ -241,10 +294,66 @@ func runScan(args []string) int {
 
 	fmt.Fprintf(stderr, "%d postings -> %s.csv, %s.json | %d dead boards | %d errors\n",
 		len(rep.Rows), *outPrefix, *outPrefix, len(rep.Dead), rep.Errs)
+	fmt.Fprintln(stderr, paySummary(rep.Rows))
+	if ranker != nil {
+		printTop(export.Sorted(rep.Rows), *top)
+	}
 	if scanErr != nil {
 		return 1
 	}
 	return 0
+}
+
+// printTop writes the n best rows, already sorted, with their reasons.
+func printTop(rows []store.Row, n int) {
+	if n > len(rows) {
+		n = len(rows)
+	}
+	if n <= 0 {
+		return
+	}
+	fmt.Fprintf(stdout, "top %d of %d by score:\n", n, len(rows))
+	for i, r := range rows[:n] {
+		fmt.Fprintf(stdout, "%2d. %5.1f  %s @ %s\n      %s\n      %s\n", i+1, r.Score, r.Title, r.Board, r.Reason, r.URL)
+	}
+}
+
+// paySummary counts how pay was found, so unknown pay is visible at a
+// glance rather than only in a CSV column.
+func paySummary(rows []store.Row) string {
+	var field, parsed, unknown int
+	for _, r := range rows {
+		switch r.Pay.Source {
+		case ats.PayFromField:
+			field++
+		case ats.PayFromDescription:
+			parsed++
+		default:
+			unknown++
+		}
+	}
+	return fmt.Sprintf("pay: %d from ATS fields, %d parsed from descriptions, %d unknown (flagged, kept)", field, parsed, unknown)
+}
+
+// setFlags reports which flags were given explicitly, so a config value
+// can fill only the ones left at their defaults.
+func setFlags(fs *flag.FlagSet) map[string]bool {
+	set := map[string]bool{}
+	fs.Visit(func(f *flag.Flag) { set[f.Name] = true })
+	return set
+}
+
+// loadConfig reads the saved search. The default path may be absent; a
+// path the user named explicitly must exist.
+func loadConfig(path string, explicit bool) (*config.Config, error) {
+	cfg, err := config.Load(path)
+	if err != nil {
+		return nil, err
+	}
+	if cfg == nil && explicit {
+		return nil, fmt.Errorf("config %q not found", path)
+	}
+	return cfg, nil
 }
 
 func writeExports(prefix string, rows []store.Row) error {
@@ -397,7 +506,7 @@ func runQuery(args []string) int {
 		return exitOn(export.JSON(stdout, out))
 	case "table":
 		for _, r := range out {
-			fmt.Fprintf(stdout, "%-11s %-24s %-52s %s\n", r.ATS, truncate(r.Board, 24), truncate(r.Title, 52), r.URL)
+			fmt.Fprintf(stdout, "%-11s %-24s %-52s %-30s %s\n", r.ATS, truncate(r.Board, 24), truncate(r.Title, 52), r.Pay, r.URL)
 		}
 		fmt.Fprintf(stderr, "%d postings\n", len(out))
 		return 0

@@ -41,7 +41,8 @@ func TestCSV(t *testing.T) {
 		t.Fatalf("parse CSV back: %v", err)
 	}
 	wantHeader := []string{"ats", "board", "external_id", "title", "location",
-		"department", "team", "employment_type", "remote", "url", "published_at", "matched"}
+		"department", "team", "employment_type", "remote", "url", "published_at", "matched",
+		"pay_min", "pay_max", "pay_currency", "pay_period", "pay_source", "pay_flag", "family", "score", "reason"}
 	if strings.Join(records[0], ",") != strings.Join(wantHeader, ",") {
 		t.Fatalf("header = %v, want %v", records[0], wantHeader)
 	}
@@ -93,5 +94,47 @@ func TestJSON(t *testing.T) {
 	}
 	if decoded[1]["remote"] != true || decoded[1]["matched"] != "ctx" {
 		t.Fatalf("JSON fields wrong: %v", decoded[1])
+	}
+}
+
+func TestPayColumnsAndFlags(t *testing.T) {
+	t.Parallel()
+	in := []store.Row{
+		{Job: ats.Job{ATS: "ashby", Board: "a", ExternalID: "1", Title: "A",
+			Pay: ats.Pay{Min: 150000, Max: 180000, Currency: "USD", Period: ats.PerYear, Source: ats.PayFromField}}},
+		{Job: ats.Job{ATS: "ashby", Board: "a", ExternalID: "2", Title: "B",
+			Pay: ats.Pay{Min: 45, Max: 60.5, Currency: "USD", Period: ats.PerHour, Source: ats.PayFromDescription}}},
+		{Job: ats.Job{ATS: "ashby", Board: "a", ExternalID: "3", Title: "C"}},
+	}
+	var buf bytes.Buffer
+	if err := CSV(&buf, in); err != nil {
+		t.Fatal(err)
+	}
+	records, _ := csv.NewReader(strings.NewReader(strings.TrimPrefix(buf.String(), "\uFEFF"))).ReadAll()
+	tail := func(r []string) string { return strings.Join(r[len(r)-9:len(r)-3], "|") }
+	want := []string{
+		"150000|180000|USD|year|field|",
+		"45|60.5|USD|hour|description|parsed",
+		"|||||unknown", // unknown pay is kept and flagged, never dropped
+	}
+	for i, w := range want {
+		if got := tail(records[i+1]); got != w {
+			t.Errorf("row %d pay cols = %q, want %q", i, got, w)
+		}
+	}
+
+	buf.Reset()
+	if err := JSON(&buf, in); err != nil {
+		t.Fatal(err)
+	}
+	var decoded []map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded[2]["pay"] != nil || decoded[2]["pay_flag"] != "unknown" {
+		t.Errorf("unknown pay JSON = %v", decoded[2])
+	}
+	if p, _ := decoded[0]["pay"].(map[string]any); p["max"] != 180000.0 || p["source"] != "field" {
+		t.Errorf("known pay JSON = %v", decoded[0]["pay"])
 	}
 }

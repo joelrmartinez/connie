@@ -1,0 +1,34 @@
+# Saved search for go-to-market engineering roles.
+# Copy to connie.yaml in the directory you run connie from, then edit.
+# Every field is optional. Flags on the command line override this file.
+
+# Job families you want. Each one also matches its variants below.
+titles:
+  - GTM Engineer
+  - GTM Systems
+  - Revenue Engineer
+  - Growth Engineer
+
+# Other names each family goes by. Case does not matter.
+variants:
+  GTM Engineer: [go-to-market engineer, gtm engineering, gtm automation engineer]
+  GTM Systems: [gtm systems engineer, sales systems, marketing systems, business systems]
+  Revenue Engineer: [revops engineer, revenue operations engineer, revenue systems]
+  Growth Engineer: [growth engineering, product growth engineer]
+
+location:
+  remote: us        # us (US-open remote), anywhere, or off
+  cities: [Seattle] # offices you can reach
+  hybrid: true      # hybrid or onsite roles in those cities count
+
+pay:
+  floor: 0                # optional annual figure; a score input, never a cutoff
+  count_description: true # pay parsed from description text counts
+
+# Ranking points per signal.
+weights:
+  title: 50
+  pay: 30
+  location: 20
+
+ats: [ashby, greenhouse, lever, workable]

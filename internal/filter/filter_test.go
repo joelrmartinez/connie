@@ -202,3 +202,30 @@ func TestUnfilteredMatchesEverything(t *testing.T) {
 		t.Error("unfiltered Match() = false, want true")
 	}
 }
+
+func TestPredicates(t *testing.T) {
+	f, err := New(
+		WithPredicate(func(j ats.Job) bool { return strings.Contains(j.Title, "Engineer") }),
+		WithPredicate(func(j ats.Job) bool { return j.Remote }),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.Unfiltered() {
+		t.Fatal("saved-search filter must not count as unfiltered")
+	}
+	cases := []struct {
+		job  ats.Job
+		want bool
+	}{
+		{ats.Job{Title: "Senior GTM Engineer", Remote: true}, true},
+		{ats.Job{Title: "Growth Engineer, Platform", Remote: true}, true},
+		{ats.Job{Title: "Senior GTM Engineer"}, false},
+		{ats.Job{Title: "Account Executive", Remote: true}, false}, // first predicate fails
+	}
+	for _, c := range cases {
+		if ok, _ := f.Match(c.job); ok != c.want {
+			t.Errorf("Match(%+v) = %v, want %v", c.job, ok, c.want)
+		}
+	}
+}

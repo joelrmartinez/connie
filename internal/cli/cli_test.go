@@ -296,7 +296,7 @@ func TestScanReportsPay(t *testing.T) {
 		t.Fatalf("no pay summary in:\n%s", errOut)
 	}
 	records := csvRecords(t, filepath.Join(dir, "run.csv"))
-	if len(records) != 1+9 || records[0][len(records[0])-1] != "pay_flag" {
+	if len(records) != 1+9 || records[0][len(records[0])-2] != "pay_flag" {
 		t.Fatalf("rows=%d header=%v", len(records), records[0])
 	}
 }

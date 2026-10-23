@@ -18,7 +18,7 @@ import (
 
 var header = []string{"ats", "board", "external_id", "title", "location",
 	"department", "team", "employment_type", "remote", "url", "published_at", "matched",
-	"pay_min", "pay_max", "pay_currency", "pay_period", "pay_source", "pay_flag"}
+	"pay_min", "pay_max", "pay_currency", "pay_period", "pay_source", "pay_flag", "family"}
 
 // jsonRow fixes the JSON field names independent of internal struct shape.
 type jsonRow struct {
@@ -36,6 +36,7 @@ type jsonRow struct {
 	Matched        string   `json:"matched"`
 	Pay            *jsonPay `json:"pay"` // null when unknown
 	PayFlag        string   `json:"pay_flag"`
+	Family         string   `json:"family"` // saved-search title family; "" outside a saved search
 }
 
 type jsonPay struct {
@@ -79,7 +80,7 @@ func CSV(w io.Writer, rows []store.Row) error {
 		record := []string{r.ATS, r.Board, r.ExternalID, r.Title, r.Location,
 			r.Department, r.Team, r.EmploymentType, strconv.FormatBool(r.Remote),
 			r.URL, published(r), r.Matched,
-			amount(r.Pay.Min), amount(r.Pay.Max), r.Pay.Currency, r.Pay.Period, r.Pay.Source, payFlag(r.Pay)}
+			amount(r.Pay.Min), amount(r.Pay.Max), r.Pay.Currency, r.Pay.Period, r.Pay.Source, payFlag(r.Pay), r.Family}
 		if err := cw.Write(record); err != nil {
 			return fmt.Errorf("write CSV row %q: %w", r.Key(), err)
 		}
@@ -100,6 +101,7 @@ func JSON(w io.Writer, rows []store.Row) error {
 			Location: r.Location, Department: r.Department, Team: r.Team,
 			EmploymentType: r.EmploymentType, Remote: r.Remote, URL: r.URL,
 			PublishedAt: published(r), Matched: r.Matched, PayFlag: payFlag(r.Pay),
+			Family: r.Family,
 		}
 		if r.Pay.Known() {
 			row.Pay = &jsonPay{Min: r.Pay.Min, Max: r.Pay.Max, Currency: r.Pay.Currency,

@@ -203,9 +203,9 @@ func TestUnfilteredMatchesEverything(t *testing.T) {
 	}
 }
 
-func TestWithTitlesAndPredicate(t *testing.T) {
+func TestPredicates(t *testing.T) {
 	f, err := New(
-		WithTitles([]string{"gtm engineer", " ", "growth engineer"}),
+		WithPredicate(func(j ats.Job) bool { return strings.Contains(j.Title, "Engineer") }),
 		WithPredicate(func(j ats.Job) bool { return j.Remote }),
 	)
 	if err != nil {
@@ -221,7 +221,7 @@ func TestWithTitlesAndPredicate(t *testing.T) {
 		{ats.Job{Title: "Senior GTM Engineer", Remote: true}, true},
 		{ats.Job{Title: "Growth Engineer, Platform", Remote: true}, true},
 		{ats.Job{Title: "Senior GTM Engineer"}, false},
-		{ats.Job{Title: "Account Executive", Remote: true}, false},
+		{ats.Job{Title: "Account Executive", Remote: true}, false}, // first predicate fails
 	}
 	for _, c := range cases {
 		if ok, _ := f.Match(c.job); ok != c.want {

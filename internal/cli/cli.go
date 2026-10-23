@@ -26,6 +26,7 @@ import (
 	"github.com/joelrmartinez/connie/internal/place"
 	"github.com/joelrmartinez/connie/internal/scan"
 	"github.com/joelrmartinez/connie/internal/store"
+	"github.com/joelrmartinez/connie/internal/titles"
 )
 
 const version = "connie 0.1.0"
@@ -203,10 +204,12 @@ func runScan(args []string) int {
 	if *remote {
 		fopts = append(fopts, filter.WithRemoteOnly())
 	}
+	var families *titles.Table
 	if useSaved {
 		loc := cfg.Location
+		families = titles.New(cfg.Titles, cfg.Variants)
 		fopts = append(fopts,
-			filter.WithTitles(savedTitles(cfg)),
+			filter.WithPredicate(func(j ats.Job) bool { _, ok := families.Classify(j.Title); return ok }),
 			filter.WithPredicate(func(j ats.Job) bool { return place.Acceptable(place.Judge(j, loc)) }))
 	}
 	f, err := filter.New(fopts...)
@@ -250,6 +253,11 @@ func runScan(args []string) int {
 	rep, scanErr := scan.Run(ctx, tasks, f, scfg)
 	if scanErr != nil {
 		fmt.Fprintf(stderr, "connie: %v — writing partial results\n", scanErr)
+	}
+	if families != nil {
+		for i := range rep.Rows {
+			rep.Rows[i].Family, _ = families.Classify(rep.Rows[i].Title)
+		}
 	}
 	// A limited run never covers a board list exhaustively.
 	if *limit > 0 {
@@ -321,16 +329,6 @@ func loadConfig(path string, explicit bool) (*config.Config, error) {
 		return nil, fmt.Errorf("config %q not found", path)
 	}
 	return cfg, nil
-}
-
-// savedTitles is every title and variant in the saved search.
-func savedTitles(cfg *config.Config) []string {
-	var out []string
-	for _, t := range cfg.Titles {
-		out = append(out, t)
-		out = append(out, cfg.Variants[t]...)
-	}
-	return out
 }
 
 func writeExports(prefix string, rows []store.Row) error {

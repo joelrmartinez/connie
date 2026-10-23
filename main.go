@@ -1,5 +1,6 @@
-// Command connie scrapes public ATS job boards (Ashby, Greenhouse, Lever),
-// remembers every posting it has ever seen, and tells you what's new.
+// Command connie scrapes public ATS job boards (Ashby,
+// Greenhouse, Lever, Workable), remembers every posting it has ever seen,
+// and tells you what's new.
 //
 // Named for Connie Sachs, the Circus's memory.
 package main

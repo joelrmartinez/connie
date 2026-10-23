@@ -44,6 +44,7 @@ func TestInitDefaults(t *testing.T) {
 		!c.Pay.CountDescription || c.Pay.Floor != 0 {
 		t.Fatalf("defaults drifted from the decided ones: %+v", c)
 	}
+	assertAllFourATS(t, c)
 
 	// A second run refuses to clobber without --force.
 	if code := Run([]string{"init", "--defaults"}); code == 0 {
@@ -105,5 +106,23 @@ func TestInitBlankAnswersTakeDefaults(t *testing.T) {
 	c, _ := config.Load(filepath.Join(".", "connie.yaml"))
 	if !reflect.DeepEqual(c, config.Defaults()) {
 		t.Fatalf("got %+v", c)
+	}
+	assertAllFourATS(t, c)
+}
+
+// assertAllFourATS pins the default board list to a literal, so a shrunken
+// AllATS or Defaults cannot pass by comparing against itself.
+func assertAllFourATS(t *testing.T, c *config.Config) {
+	t.Helper()
+	want := []string{"ashby", "greenhouse", "lever", "workable"}
+	if !reflect.DeepEqual(c.ATS, want) {
+		t.Fatalf("default ats = %v, want %v", c.ATS, want)
+	}
+	raw, err := os.ReadFile("connie.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "ats:\n  - ashby\n  - greenhouse\n  - lever\n  - workable\n") {
+		t.Fatalf("connie.yaml does not list all four ATSes:\n%s", raw)
 	}
 }

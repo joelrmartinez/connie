@@ -57,6 +57,24 @@ connie version
 - **`--all`** takes every listed posting, and is the only mode allowed to
   mark vanished postings closed (see lifecycle below).
 
+## Saved search (connie.yaml)
+
+Instead of retyping flags, save a search in `connie.yaml` in the directory
+you run connie from. Start from a template:
+
+```sh
+cp examples/gtm.yaml connie.yaml   # or examples/sales.yaml
+connie scan                        # no mode flag: uses connie.yaml
+```
+
+The file holds titles and their variants, location scope (remote US-only or
+anywhere, cities, whether hybrid counts), an optional pay floor, whether pay
+found in description text counts, ranking weights, and the ATS list.
+
+Flags always win. `--title`, `--grep`, or `--all` replace the saved titles
+and location rules; `--ats` replaces the saved ATS list. `--config PATH`
+reads another file and `--no-config` ignores it.
+
 ## Where boards come from
 
 Two files per ATS, by design:

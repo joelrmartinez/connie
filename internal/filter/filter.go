@@ -39,6 +39,8 @@ type Filter struct {
 	exact      bool
 	grep       *regexp.Regexp
 	remoteOnly bool
+	titles     []string           // any-of, from a saved search
+	keep       func(ats.Job) bool // extra predicate, e.g. location fit
 }
 
 // Option configures a Filter.
@@ -74,6 +76,28 @@ func WithRemoteOnly() Option {
 	}
 }
 
+// WithTitles matches when any of queries fuzzy-matches the title. It is
+// how a saved search with several titles becomes one filter.
+func WithTitles(queries []string) Option {
+	return func(f *Filter) error {
+		for _, q := range queries {
+			if q = strings.TrimSpace(q); q != "" {
+				f.titles = append(f.titles, q)
+			}
+		}
+		return nil
+	}
+}
+
+// WithPredicate adds a criterion the filter package need not understand,
+// such as a saved search's location rules.
+func WithPredicate(keep func(ats.Job) bool) Option {
+	return func(f *Filter) error {
+		f.keep = keep
+		return nil
+	}
+}
+
 // New builds a Filter, surfacing bad patterns at construction rather than
 // mid-scan.
 func New(opts ...Option) (*Filter, error) {
@@ -96,6 +120,12 @@ func (f *Filter) Match(j ats.Job) (ok bool, fragments []string) {
 	if f.title != "" && !TitleMatches(j.Title, f.title, f.exact) {
 		return false, nil
 	}
+	if len(f.titles) > 0 && !anyTitle(j.Title, f.titles) {
+		return false, nil
+	}
+	if f.keep != nil && !f.keep(j) {
+		return false, nil
+	}
 	if f.grep != nil {
 		text := PlainText(j.Description)
 		fragments = fragmentsOf(text, f.grep)
@@ -112,7 +142,17 @@ func (f *Filter) NeedsDescriptions() bool { return f.grep != nil }
 // Unfiltered reports whether this filter passes every listed job — the
 // precondition for a scan to be allowed to close vanished postings.
 func (f *Filter) Unfiltered() bool {
-	return f.title == "" && f.grep == nil && !f.remoteOnly
+	return f.title == "" && f.grep == nil && !f.remoteOnly &&
+		len(f.titles) == 0 && f.keep == nil
+}
+
+func anyTitle(title string, queries []string) bool {
+	for _, q := range queries {
+		if TitleMatches(title, q, false) {
+			return true
+		}
+	}
+	return false
 }
 
 // TitleMatches implements the reference title semantics. Case-insensitive.

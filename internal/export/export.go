@@ -18,7 +18,7 @@ import (
 
 var header = []string{"ats", "board", "external_id", "title", "location",
 	"department", "team", "employment_type", "remote", "url", "published_at", "matched",
-	"pay_min", "pay_max", "pay_currency", "pay_period", "pay_source", "pay_flag", "family"}
+	"pay_min", "pay_max", "pay_currency", "pay_period", "pay_source", "pay_flag", "family", "score", "reason"}
 
 // jsonRow fixes the JSON field names independent of internal struct shape.
 type jsonRow struct {
@@ -37,6 +37,8 @@ type jsonRow struct {
 	Pay            *jsonPay `json:"pay"` // null when unknown
 	PayFlag        string   `json:"pay_flag"`
 	Family         string   `json:"family"` // saved-search title family; "" outside a saved search
+	Score          *float64 `json:"score"`  // null outside a saved search
+	Reason         string   `json:"reason"`
 }
 
 type jsonPay struct {
@@ -76,11 +78,11 @@ func CSV(w io.Writer, rows []store.Row) error {
 	if err := cw.Write(header); err != nil {
 		return fmt.Errorf("write CSV header: %w", err)
 	}
-	for _, r := range sorted(rows) {
+	for _, r := range Sorted(rows) {
 		record := []string{r.ATS, r.Board, r.ExternalID, r.Title, r.Location,
 			r.Department, r.Team, r.EmploymentType, strconv.FormatBool(r.Remote),
 			r.URL, published(r), r.Matched,
-			amount(r.Pay.Min), amount(r.Pay.Max), r.Pay.Currency, r.Pay.Period, r.Pay.Source, payFlag(r.Pay), r.Family}
+			amount(r.Pay.Min), amount(r.Pay.Max), r.Pay.Currency, r.Pay.Period, r.Pay.Source, payFlag(r.Pay), r.Family, score(r.Score), r.Reason}
 		if err := cw.Write(record); err != nil {
 			return fmt.Errorf("write CSV row %q: %w", r.Key(), err)
 		}
@@ -95,13 +97,18 @@ func CSV(w io.Writer, rows []store.Row) error {
 // JSON writes rows as a JSON array with stable field names.
 func JSON(w io.Writer, rows []store.Row) error {
 	out := make([]jsonRow, 0, len(rows))
-	for _, r := range sorted(rows) {
+	for _, r := range Sorted(rows) {
 		row := jsonRow{
 			ATS: r.ATS, Board: r.Board, ExternalID: r.ExternalID, Title: r.Title,
 			Location: r.Location, Department: r.Department, Team: r.Team,
 			EmploymentType: r.EmploymentType, Remote: r.Remote, URL: r.URL,
 			PublishedAt: published(r), Matched: r.Matched, PayFlag: payFlag(r.Pay),
 			Family: r.Family,
+			Reason: r.Reason,
+		}
+		if r.Reason != "" {
+			sc := r.Score
+			row.Score = &sc
 		}
 		if r.Pay.Known() {
 			row.Pay = &jsonPay{Min: r.Pay.Min, Max: r.Pay.Max, Currency: r.Pay.Currency,
@@ -117,12 +124,16 @@ func JSON(w io.Writer, rows []store.Row) error {
 	return nil
 }
 
-// sorted returns rows ordered by (board, title, key), case-insensitively —
-// deterministic output regardless of worker completion order.
-func sorted(rows []store.Row) []store.Row {
+// Sorted returns rows ordered by score (best first; unranked rows all
+// score 0), then (board, title, key), case-insensitively: deterministic
+// output regardless of worker completion order.
+func Sorted(rows []store.Row) []store.Row {
 	out := make([]store.Row, len(rows))
 	copy(out, rows)
 	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Score != out[j].Score {
+			return out[i].Score > out[j].Score
+		}
 		bi, bj := strings.ToLower(out[i].Board), strings.ToLower(out[j].Board)
 		if bi != bj {
 			return bi < bj
@@ -141,4 +152,12 @@ func published(r store.Row) string {
 		return ""
 	}
 	return r.PublishedAt.UTC().Format(time.RFC3339)
+}
+
+// score leaves the column empty for unranked rows.
+func score(v float64) string {
+	if v == 0 {
+		return ""
+	}
+	return strconv.FormatFloat(v, 'f', 1, 64)
 }

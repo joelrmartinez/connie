@@ -3,6 +3,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -27,6 +28,7 @@ import (
 	"github.com/joelrmartinez/connie/internal/rank"
 	"github.com/joelrmartinez/connie/internal/scan"
 	"github.com/joelrmartinez/connie/internal/store"
+	"github.com/joelrmartinez/connie/seeds"
 )
 
 const version = "connie 0.1.0"
@@ -122,8 +124,33 @@ func adaptersFor(names string, client ats.Getter) ([]ats.Adapter, error) {
 	return out, nil
 }
 
-func boardsFor(name string) ([]string, error) {
-	seed, err := discover.Load(filepath.Join("seeds", name+".json"))
+// defaultSeedsDir is checked for local seed overrides when --seeds is unset.
+const defaultSeedsDir = "seeds"
+
+// loadSeed returns the seed list for one ATS. An explicit dir always wins;
+// otherwise a local seeds/ directory overrides the seeds embedded in the
+// binary, so a checkout can edit them and an installed binary still works
+// from anywhere.
+func loadSeed(name, dir string) ([]string, error) {
+	if dir != "" {
+		return discover.Load(filepath.Join(dir, name+".json"))
+	}
+	if fi, err := os.Stat(defaultSeedsDir); err == nil && fi.IsDir() {
+		return discover.Load(filepath.Join(defaultSeedsDir, name+".json"))
+	}
+	body, err := seeds.FS.ReadFile(name + ".json")
+	if err != nil {
+		return nil, nil
+	}
+	var boards []string
+	if err := json.Unmarshal(body, &boards); err != nil {
+		return nil, fmt.Errorf("parse embedded seed %s.json: %w", name, err)
+	}
+	return boards, nil
+}
+
+func boardsFor(name, seedsDir string) ([]string, error) {
+	seed, err := loadSeed(name, seedsDir)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +160,7 @@ func boardsFor(name string) ([]string, error) {
 	}
 	boards := discover.Union(seed, cache)
 	if len(boards) == 0 {
-		return nil, fmt.Errorf("no boards for %s: seed seeds/%s.json missing or empty (run `connie discover`?)", name, name)
+		return nil, fmt.Errorf("no boards for %s: seed %s.json missing or empty (run `connie discover`?)", name, name)
 	}
 	return boards, nil
 }
@@ -158,6 +185,7 @@ func runScan(args []string) int {
 		noConfig    = fs.Bool("no-config", false, "ignore the saved search file")
 		hardFilter  = fs.Bool("hard-filter", false, "with a saved search, drop postings outside its titles and locations instead of ranking them")
 		top         = fs.Int("top", 10, "with a saved search, print the N best-ranked postings (0 for none)")
+		seedsDir    = fs.String("seeds", "", "seed directory (default: ./seeds if present, else built-in seeds)")
 		descPay     = fs.Bool("desc-pay", false, "parse pay from description text when the ATS gives none (default from config pay.count_description)")
 	)
 	if err := fs.Parse(args); err != nil {
@@ -232,7 +260,7 @@ func runScan(args []string) int {
 
 	var tasks []scan.Task
 	for _, a := range adapters {
-		boards, err := boardsFor(a.Name())
+		boards, err := boardsFor(a.Name(), *seedsDir)
 		if err != nil {
 			return fail(err)
 		}
@@ -409,6 +437,7 @@ func runDiscover(args []string) int {
 		atsList     = fs.String("ats", "ashby,greenhouse,lever,workable", "comma-separated ATSes to discover")
 		concurrency = fs.Int("concurrency", 8, "max in-flight probes")
 		cdxTimeout  = fs.Duration("cdx-timeout", 5*time.Minute, "timeout for one archive query")
+		seedsDir    = fs.String("seeds", "", "seed directory (default: ./seeds if present, else built-in seeds)")
 	)
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -447,7 +476,7 @@ func runDiscover(args []string) int {
 		}
 
 		path := filepath.Join("boards", a.Name()+".json")
-		seed, _ := discover.Load(filepath.Join("seeds", a.Name()+".json"))
+		seed, _ := loadSeed(a.Name(), *seedsDir)
 		cache, _ := discover.Load(path)
 		merged := discover.Union(seed, cache, live)
 		if err := discover.Save(path, merged); err != nil {

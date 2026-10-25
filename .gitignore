@@ -1,4 +1,4 @@
-# Discovery caches — potentially every ATS customer; never publish (seeds/ IS committed).
+# Discovery caches: potentially every ATS customer; never publish (seeds/ IS committed).
 boards/
 
 # Run outputs
@@ -11,3 +11,12 @@ out/
 
 # OS noise
 .DS_Store
+
+# Build outputs
+/connie
+/connie.exe
+dist/
+
+# Root scan outputs (never commit your own search results)
+/*.json
+connie.yaml

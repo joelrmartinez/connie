@@ -14,7 +14,10 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/joelrmartinez/connie/internal/version"
 )
 
 // ErrNotFound is returned for HTTP 404. Never retried: a missing board is a
@@ -31,7 +34,9 @@ const (
 	// A server asking for a longer pause than this gets it by us going
 	// away: the request fails instead of holding a worker for minutes.
 	defaultMaxRetryAfter = 2 * time.Minute
-	defaultUserAgent     = "connie/1.0 (+https://github.com/joelrmartinez/connie)"
+	// DefaultPerHost caps concurrent requests to any single host, so a
+	// large worker pool never piles onto one ATS vendor.
+	DefaultPerHost = 2
 )
 
 // Client is a retrying HTTP client for the ATS APIs.
@@ -43,6 +48,10 @@ type Client struct {
 	ua          string
 	jitter      func() float64 // in [0,1); test seam
 	now         func() time.Time
+
+	perHost int
+	mu      sync.Mutex
+	hosts   map[string]chan struct{}
 }
 
 // Option configures a Client.
@@ -76,6 +85,12 @@ func WithUserAgent(ua string) Option {
 	return func(c *Client) { c.ua = sanitizeASCII(ua) }
 }
 
+// WithPerHostLimit caps concurrent in-flight requests per host. n <= 0
+// disables the cap.
+func WithPerHostLimit(n int) Option {
+	return func(c *Client) { c.perHost = n }
+}
+
 // WithBaseTransport swaps the underlying RoundTripper (test seam).
 func WithBaseTransport(rt http.RoundTripper) Option {
 	return func(c *Client) { c.hc.Transport = rt }
@@ -88,7 +103,9 @@ func New(opts ...Option) *Client {
 		retries:     defaultRetries,
 		backoffBase: defaultBackoffBase,
 		maxWait:     defaultMaxRetryAfter,
-		ua:          defaultUserAgent,
+		ua:          version.UserAgent(""),
+		perHost:     DefaultPerHost,
+		hosts:       map[string]chan struct{}{},
 		jitter:      rand.Float64,
 		now:         time.Now,
 	}
@@ -153,7 +170,16 @@ func (c *Client) attempt(ctx context.Context, method, url string, after *time.Du
 	req.Header.Set("User-Agent", c.ua)
 	req.Header.Set("Accept", "application/json")
 
+	release, err := c.acquire(ctx, req.URL.Host)
+	if err != nil {
+		return nil, false, err
+	}
 	resp, err := c.hc.Do(req)
+	if err != nil {
+		release()
+	} else {
+		defer release()
+	}
 	if err != nil {
 		return nil, true, fmt.Errorf("request failed: %w", err)
 	}
@@ -252,4 +278,25 @@ func sanitizeASCII(s string) string {
 		}
 	}
 	return strings.TrimSpace(b.String())
+}
+
+// acquire takes a per-host slot, blocking until one frees or ctx ends.
+// The slot is held only for a single attempt, never across backoff waits.
+func (c *Client) acquire(ctx context.Context, host string) (func(), error) {
+	if c.perHost <= 0 {
+		return func() {}, nil
+	}
+	c.mu.Lock()
+	sem, ok := c.hosts[host]
+	if !ok {
+		sem = make(chan struct{}, c.perHost)
+		c.hosts[host] = sem
+	}
+	c.mu.Unlock()
+	select {
+	case sem <- struct{}{}:
+		return func() { <-sem }, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }

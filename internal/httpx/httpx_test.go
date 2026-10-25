@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -211,7 +212,7 @@ func TestUserAgentSanitizedToASCII(t *testing.T) {
 	defer srv.Close()
 
 	// The em-dash broke the Python original's latin-1 header encoding once.
-	c := testClient(WithUserAgent("connie/1.0 — contact: joel@pushtomain.xyz"))
+	c := testClient(WithUserAgent("connie/1.0 — contact: you@example.com"))
 	if _, err := c.Get(context.Background(), srv.URL); err != nil {
 		t.Fatalf("Get() unexpected error: %v", err)
 	}
@@ -243,5 +244,52 @@ func TestHead(t *testing.T) {
 	}
 	if err := c.Head(context.Background(), srv.URL+"/gone"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("Head(missing) error = %v, want ErrNotFound", err)
+	}
+}
+
+func TestPerHostLimit(t *testing.T) {
+	var inFlight, peak int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := atomic.AddInt32(&inFlight, 1)
+		for {
+			p := atomic.LoadInt32(&peak)
+			if n <= p || atomic.CompareAndSwapInt32(&peak, p, n) {
+				break
+			}
+		}
+		time.Sleep(20 * time.Millisecond)
+		atomic.AddInt32(&inFlight, -1)
+		w.Write([]byte("{}"))
+	}))
+	defer srv.Close()
+
+	c := testClient(WithPerHostLimit(2))
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if _, err := c.Get(context.Background(), srv.URL); err != nil {
+				t.Error(err)
+			}
+		}()
+	}
+	wg.Wait()
+	if peak > 2 {
+		t.Fatalf("peak in-flight to one host = %d, want <= 2", peak)
+	}
+}
+
+func TestPerHostLimitHonorsContext(t *testing.T) {
+	c := testClient(WithPerHostLimit(1))
+	release, err := c.acquire(context.Background(), "h")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := c.acquire(ctx, "h"); err == nil {
+		t.Fatal("acquire on full host with canceled ctx: want error")
 	}
 }

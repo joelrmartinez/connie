@@ -3,7 +3,7 @@ module github.com/joelrmartinez/connie
 go 1.26
 
 require (
-	go.yaml.in/yaml/v3 v3.0.5
+	go.yaml.in/yaml/v3 v3.0.6
 	modernc.org/sqlite v1.54.0
 )
 
